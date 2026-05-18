@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'home_page.dart';
 
 class DaftarPage extends StatefulWidget {
     const DaftarPage({super.key});
@@ -144,7 +145,14 @@ class _DaftarPageState extends State<DaftarPage> {
                                                     borderRadius: BorderRadius.circular(35),
                                                 ),
                                             ),
-                                            onPressed: () {},
+                                            onPressed: () {
+                                                Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                        builder: (context) => const HomePage(),
+                                                    ),
+                                                );
+                                            },
                                             child: const Text(
                                                 "Masuk",
                                                 style: TextStyle(
