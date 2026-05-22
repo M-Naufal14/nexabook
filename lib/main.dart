@@ -26,7 +26,9 @@ class SplashPage extends StatelessWidget {
     return Scaffold(
       body: Stack(
         children: [
-        //gambar background
+
+        // gambar background
+
           SizedBox.expand(
             child: Image.asset(
               "assets/images/bg.png",
@@ -44,7 +46,8 @@ class SplashPage extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const SizedBox(height: 350),
-                /// logo
+
+                // logo
                 Center(
                   child: Image.asset(
                     "assets/images/logo.png",
@@ -65,7 +68,8 @@ class SplashPage extends StatelessWidget {
 
                   const SizedBox(height: 250),
 
-                  ///button login
+                  // button login
+
                   SizedBox(
                     width: 300,
                     height: 50,
@@ -92,6 +96,8 @@ class SplashPage extends StatelessWidget {
                   ),
 
                   const SizedBox(height: 20),
+
+                  // DAFTAR
 
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
