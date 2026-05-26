@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../helper/database_helper.dart';
-import 'home_page.dart';
+import '../main.dart';
 import 'login_page.dart';
 
 class DaftarPage extends StatefulWidget {
@@ -129,6 +129,13 @@ class _DaftarPageState extends State<DaftarPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? const Color(0xFF1E293B).withOpacity(0.92) : Colors.white.withOpacity(0.92);
+    final textMainColor = isDark ? Colors.white : const Color(0xFF2C3E50);
+    final textSubColor = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
+    final inputBg = isDark ? const Color(0xFF0F172A) : Colors.white;
+    final borderCol = isDark ? const Color(0xFF334155) : Colors.grey.shade300;
+
     return Scaffold(
       body: Stack(
         children: [
@@ -141,29 +148,49 @@ class _DaftarPageState extends State<DaftarPage> {
           ),
           // Dark Overlay for cinematic depth
           Container(
-            color: Colors.black.withOpacity( 0.45),
+            color: Colors.black.withOpacity(0.45),
           ),
 
-          // Elegant Circular Back Button at Top Left
+          // Elegant Circular Back Button & Theme Toggle at Top
           Positioned(
             top: 50,
             left: 20,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity( 0.9),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity( 0.15),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
+            right: 20,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.9),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Color(0xFF118954)),
-                onPressed: () => Navigator.pop(context),
-              ),
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Color(0xFF118954)),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.9),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const ThemeToggleButton(),
+                ),
+              ],
             ),
           ),
 
@@ -174,15 +201,15 @@ class _DaftarPageState extends State<DaftarPage> {
               child: Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity( 0.92),
+                  color: cardBg,
                   borderRadius: BorderRadius.circular(28),
                   border: Border.all(
-                    color: Colors.white.withOpacity( 0.6),
+                    color: isDark ? const Color(0xFF334155) : Colors.white.withOpacity(0.6),
                     width: 1.5,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity( 0.25),
+                      color: Colors.black.withOpacity(0.25),
                       blurRadius: 25,
                       offset: const Offset(0, 10),
                     ),
@@ -199,7 +226,7 @@ class _DaftarPageState extends State<DaftarPage> {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF118954).withOpacity( 0.1),
+                              color: const Color(0xFF118954).withOpacity(0.1),
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(
@@ -209,11 +236,11 @@ class _DaftarPageState extends State<DaftarPage> {
                             ),
                           ),
                           const SizedBox(height: 12),
-                          const Text(
+                          Text(
                             "Buat Akun Baru",
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: Color(0xFF2C3E50),
+                              color: textMainColor,
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
                             ),
@@ -222,7 +249,7 @@ class _DaftarPageState extends State<DaftarPage> {
                           Text(
                             "Mulai perjalanan booking visual Anda",
                             style: TextStyle(
-                              color: Colors.grey.shade600,
+                              color: textSubColor,
                               fontSize: 13,
                             ),
                           ),
@@ -232,10 +259,10 @@ class _DaftarPageState extends State<DaftarPage> {
                     const SizedBox(height: 24),
 
                     // Label Role
-                    const Text(
+                    Text(
                       "Daftar Sebagai",
                       style: TextStyle(
-                        color: Color(0xFF2C3E50),
+                        color: textMainColor,
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -246,19 +273,20 @@ class _DaftarPageState extends State<DaftarPage> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: inputBg,
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.grey.shade300),
+                        border: Border.all(color: borderCol),
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
                           isExpanded: true,
                           value: selectedRole,
-                          hint: const Row(
+                          dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                          hint: Row(
                             children: [
-                              Icon(Icons.person_outline, color: Colors.grey, size: 20),
-                              SizedBox(width: 10),
-                              Text("Pilih Disini", style: TextStyle(color: Colors.grey, fontSize: 14)),
+                              const Icon(Icons.person_outline, color: Colors.grey, size: 20),
+                              const SizedBox(width: 10),
+                              Text("Pilih Disini", style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
                             ],
                           ),
                           items: ["Vendor", "Pelanggan"]
@@ -276,8 +304,8 @@ class _DaftarPageState extends State<DaftarPage> {
                                         const SizedBox(width: 10),
                                         Text(
                                           item,
-                                          style: const TextStyle(
-                                            color: Color(0xFF2C3E50),
+                                          style: TextStyle(
+                                            color: textMainColor,
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),
@@ -296,10 +324,10 @@ class _DaftarPageState extends State<DaftarPage> {
                     const SizedBox(height: 16),
 
                     // Label Email
-                    const Text(
+                    Text(
                       "Email",
                       style: TextStyle(
-                        color: Color(0xFF2C3E50),
+                        color: textMainColor,
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -310,16 +338,17 @@ class _DaftarPageState extends State<DaftarPage> {
                     TextField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
+                      style: TextStyle(color: textMainColor),
                       decoration: InputDecoration(
                         hintText: "Masukkan Email Anda",
                         hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
                         prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF118954), size: 20),
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: inputBg,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
+                          borderSide: BorderSide(color: borderCol),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
@@ -330,10 +359,10 @@ class _DaftarPageState extends State<DaftarPage> {
                     const SizedBox(height: 16),
 
                     // Label Password
-                    const Text(
+                    Text(
                       "Kata Sandi",
                       style: TextStyle(
-                        color: Color(0xFF2C3E50),
+                        color: textMainColor,
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -344,6 +373,7 @@ class _DaftarPageState extends State<DaftarPage> {
                     TextField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
+                      style: TextStyle(color: textMainColor),
                       decoration: InputDecoration(
                         hintText: "Masukkan Password",
                         hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
@@ -361,11 +391,11 @@ class _DaftarPageState extends State<DaftarPage> {
                           },
                         ),
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: inputBg,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
+                          borderSide: BorderSide(color: borderCol),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
@@ -387,7 +417,7 @@ class _DaftarPageState extends State<DaftarPage> {
                             borderRadius: BorderRadius.circular(30),
                           ),
                           elevation: 3,
-                          shadowColor: const Color(0xFF118954).withOpacity( 0.4),
+                          shadowColor: const Color(0xFF118954).withOpacity(0.4),
                         ),
                         onPressed: _handleDaftar,
                         child: const Text(
@@ -400,7 +430,7 @@ class _DaftarPageState extends State<DaftarPage> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
                     // Toggle ke Halaman Login
                     Row(
@@ -408,7 +438,7 @@ class _DaftarPageState extends State<DaftarPage> {
                       children: [
                         Text(
                           "Sudah punya akun? ",
-                          style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                          style: TextStyle(color: textSubColor, fontSize: 13),
                         ),
                         GestureDetector(
                           onTap: () {
@@ -428,6 +458,42 @@ class _DaftarPageState extends State<DaftarPage> {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        const Expanded(child: Divider()),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          child: Text("Atau", style: TextStyle(color: textSubColor, fontSize: 12)),
+                        ),
+                        const Expanded(child: Divider()),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF118954), width: 1.5),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.pushNamed(context, '/vendor-portal');
+                        },
+                        icon: const Icon(Icons.storefront_outlined, color: Color(0xFF118954), size: 20),
+                        label: const Text(
+                          "Buka Vendor Portal",
+                          style: TextStyle(
+                            color: Color(0xFF118954),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../helper/database_helper.dart';
+import '../helper/image_helper.dart';
+import 'booking_flow_page.dart';
 
 class ExplorePage extends StatefulWidget {
   const ExplorePage({super.key});
@@ -14,6 +16,18 @@ class _ExplorePageState extends State<ExplorePage> {
   String _selectedType = 'Semua'; // 'Semua', 'Fotografer', 'Videografer'
   String _sortBy = 'Default'; // 'Default', 'Harga Terendah', 'Rating Tertinggi'
   Set<int> _favoriteVendorIds = {};
+
+  Color _getScaffoldBg() => Theme.of(context).scaffoldBackgroundColor;
+  Color _getCardBg() => Theme.of(context).cardColor;
+  Color _getTextColor() => Theme.of(context).brightness == Brightness.dark
+      ? Colors.white
+      : const Color(0xFF2C3E50);
+  Color _getBorderColor() => Theme.of(context).brightness == Brightness.dark
+      ? const Color(0xFF334155)
+      : Colors.grey.shade200;
+  Color _getTextSubColor() => Theme.of(context).brightness == Brightness.dark
+      ? Colors.grey.shade400
+      : Colors.grey.shade600;
 
   @override
   void initState() {
@@ -37,19 +51,19 @@ class _ExplorePageState extends State<ExplorePage> {
 
   Future<void> _loadFavorites() async {
     final email = DatabaseHelper.currentUserEmail;
+    final Set<int> favs = {};
     if (email != null) {
-      final Set<int> favs = {};
       for (final vendor in _filteredVendors) {
         final id = vendor['id'] as int;
         if (await DatabaseHelper.instance.isFavorite(email, id)) {
           favs.add(id);
         }
       }
-      if (mounted) {
-        setState(() {
-          _favoriteVendorIds = favs;
-        });
-      }
+    }
+    if (mounted) {
+      setState(() {
+        _favoriteVendorIds = favs;
+      });
     }
   }
 
@@ -88,311 +102,24 @@ class _ExplorePageState extends State<ExplorePage> {
   }
 
   void _showVendorDetail(Map<String, dynamic> vendor) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            final isFav = _favoriteVendorIds.contains(vendor['id']);
-            return Container(
-              height: MediaQuery.of(context).size.height * 0.88,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-              ),
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-                child: Column(
-                  children: [
-                    // Handle Bar
-                    const SizedBox(height: 12),
-                    Container(
-                      width: 50,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Detail Content
-                    Expanded(
-                      child: ListView(
-                        physics: const BouncingScrollPhysics(),
-                        padding: EdgeInsets.zero,
-                        children: [
-                          // Header Image Stack
-                          Stack(
-                            children: [
-                              Image.asset(
-                                vendor['image'],
-                                height: 260,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, err, stack) => Container(
-                                  height: 260,
-                                  color: Colors.grey.shade200,
-                                  child: const Icon(Icons.image, size: 64, color: Colors.grey),
-                                ),
-                              ),
-                              Positioned(
-                                top: 16,
-                                right: 16,
-                                child: CircleAvatar(
-                                  backgroundColor: Colors.white,
-                                  child: IconButton(
-                                    icon: Icon(
-                                      isFav ? Icons.favorite : Icons.favorite_border,
-                                      color: isFav ? Colors.red : Colors.grey.shade700,
-                                    ),
-                                    onPressed: () {
-                                      _toggleFavorite(vendor['id']);
-                                      setModalState(() {});
-                                    },
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          // Details Text
-                          Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Title & Tag
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        vendor['name'],
-                                        style: const TextStyle(
-                                          fontSize: 24,
-                                          fontWeight: FontWeight.bold,
-                                          color: Color(0xFF2C3E50),
-                                        ),
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF118954).withOpacity( 0.12),
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Text(
-                                        vendor['type'],
-                                        style: const TextStyle(
-                                          color: Color(0xFF118954),
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-
-                                // Location & Rating
-                                Row(
-                                  children: [
-                                    const Icon(Icons.location_on, size: 18, color: Colors.grey),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      vendor['location'],
-                                      style: const TextStyle(color: Colors.grey, fontSize: 14),
-                                    ),
-                                    const SizedBox(width: 24),
-                                    const Icon(Icons.star, color: Colors.amber, size: 18),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      "${vendor['rating']} (${vendor['reviews']} Ulasan)",
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                        color: Color(0xFF2C3E50),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 20),
-                                const Divider(),
-                                const SizedBox(height: 16),
-
-                                // Description
-                                const Text(
-                                  "Tentang Vendor",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF2C3E50),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  vendor['desc'],
-                                  style: TextStyle(
-                                    height: 1.5,
-                                    color: Colors.grey.shade600,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-
-                                // Features / Package Includes
-                                const Text(
-                                  "Paket Sudah Termasuk",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF2C3E50),
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                ...((vendor['features'] as List<String>).map((feat) {
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 10),
-                                    child: Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        const Icon(Icons.check_circle_outline, size: 20, color: Color(0xFF118954)),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: Text(
-                                            feat,
-                                            style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                })),
-                                const SizedBox(height: 30),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Price & Booking Action Panel
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border(top: BorderSide(color: Colors.grey.shade200)),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity( 0.04),
-                            blurRadius: 10,
-                            offset: const Offset(0, -4),
-                          ),
-                        ],
-                      ),
-                      child: SafeArea(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Text(
-                                  "Mulai Dari",
-                                  style: TextStyle(color: Colors.grey, fontSize: 12),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  vendor['price'],
-                                  style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF118954),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF118954),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                elevation: 2,
-                              ),
-                              onPressed: () async {
-                                final email = DatabaseHelper.currentUserEmail;
-                                if (email == null) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Silakan masuk terlebih dahulu untuk memesan!'),
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
-                                  return;
-                                }
-
-                                showDialog(
-                                  context: context,
-                                  barrierDismissible: false,
-                                  builder: (context) => const Center(
-                                    child: CircularProgressIndicator(
-                                      color: Color(0xFF118954),
-                                    ),
-                                  ),
-                                );
-
-                                await DatabaseHelper.instance.createBooking(
-                                  email,
-                                  vendor['id'],
-                                  '${vendor['type']} Session',
-                                  vendor['price'],
-                                );
-
-                                if (context.mounted) {
-                                  Navigator.pop(context); // Tutup loading dialog
-                                  Navigator.pop(context); // Tutup detail bottom sheet
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Berhasil mem-booking ${vendor['name']}! Silakan cek menu Jadwal.'),
-                                      behavior: SnackBarBehavior.floating,
-                                      backgroundColor: const Color(0xFF118954),
-                                    ),
-                                  );
-                                }
-                              },
-                              child: const Text(
-                                "Pesan Sekarang",
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BookingFlowPage(vendor: vendor),
+      ),
+    ).then((_) {
+      _loadVendors();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: _getScaffoldBg(),
       // Clean App Bar WITHOUT arrow back
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF7F8FA),
+        backgroundColor: _getScaffoldBg(),
         elevation: 0,
         automaticallyImplyLeading: false, // Ensures no back arrow shows
         title: const Text(
@@ -408,16 +135,16 @@ class _ExplorePageState extends State<ExplorePage> {
         children: [
           // Sticky Search Bar
           Container(
-            color: const Color(0xFFF7F8FA),
+            color: _getScaffoldBg(),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: _getCardBg(),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.grey.shade200),
+                border: Border.all(color: _getBorderColor()),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color.fromRGBO(0, 0, 0, 0.03),
+                    color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
                     blurRadius: 10,
                   ),
                 ],
@@ -427,12 +154,13 @@ class _ExplorePageState extends State<ExplorePage> {
                   _searchQuery = val;
                   _loadVendors();
                 },
-                decoration: const InputDecoration(
+                style: TextStyle(color: _getTextColor()),
+                decoration: InputDecoration(
                   border: InputBorder.none,
-                  prefixIcon: Icon(Icons.search, color: Color(0xFF118954)),
+                  prefixIcon: const Icon(Icons.search, color: Color(0xFF118954)),
                   hintText: "Cari fotografer, videografer, lokasi...",
-                  hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
-                  contentPadding: EdgeInsets.symmetric(vertical: 16),
+                  hintStyle: TextStyle(color: _getTextSubColor(), fontSize: 14),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 16),
                 ),
               ),
             ),
@@ -532,7 +260,7 @@ class _ExplorePageState extends State<ExplorePage> {
                         const SizedBox(height: 16),
                         Text(
                           "Vendor tidak ditemukan",
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey.shade600),
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _getTextSubColor()),
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -564,8 +292,8 @@ class _ExplorePageState extends State<ExplorePage> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFF118954) : Colors.white,
-          border: Border.all(color: isActive ? Colors.transparent : Colors.grey.shade300),
+          color: isActive ? const Color(0xFF118954) : _getCardBg(),
+          border: Border.all(color: isActive ? Colors.transparent : _getBorderColor()),
           borderRadius: BorderRadius.circular(24),
           boxShadow: isActive
               ? [BoxShadow(color: const Color(0xFF118954).withOpacity( 0.3), blurRadius: 6, offset: const Offset(0, 3))]
@@ -573,14 +301,14 @@ class _ExplorePageState extends State<ExplorePage> {
         ),
         child: Row(
           children: [
-            Icon(icon, size: 16, color: isActive ? Colors.white : Colors.black87),
+            Icon(icon, size: 16, color: isActive ? Colors.white : _getTextColor()),
             const SizedBox(width: 6),
             Text(
               label,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
-                color: isActive ? Colors.white : Colors.black87,
+                color: isActive ? Colors.white : _getTextColor(),
               ),
             ),
             const SizedBox(width: 4),
@@ -592,18 +320,19 @@ class _ExplorePageState extends State<ExplorePage> {
   }
 
   Widget _buildVendorCard(Map<String, dynamic> vendor) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isFav = _favoriteVendorIds.contains(vendor['id']);
     return GestureDetector(
       onTap: () => _showVendorDetail(vendor),
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: _getCardBg(),
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(color: _getBorderColor()),
           boxShadow: [
             BoxShadow(
-              color: const Color.fromRGBO(0, 0, 0, 0.02),
+              color: Colors.black.withOpacity(isDark ? 0.2 : 0.02),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -616,14 +345,14 @@ class _ExplorePageState extends State<ExplorePage> {
               children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                  child: Image.asset(
-                    vendor['image'],
+                  child: NexaImage(
+                    imagePath: vendor['image'],
                     height: 180,
                     width: double.infinity,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) => Container(
                       height: 180,
-                      color: Colors.grey.shade100,
+                      color: isDark ? const Color(0xFF0F172A) : Colors.grey.shade100,
                       child: const Icon(Icons.image, color: Colors.grey, size: 40),
                     ),
                   ),
@@ -636,11 +365,11 @@ class _ExplorePageState extends State<ExplorePage> {
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity( 0.9),
+                        color: Colors.white.withOpacity(0.9),
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity( 0.1),
+                            color: Colors.black.withOpacity(0.1),
                             blurRadius: 4,
                           ),
                         ],
@@ -659,7 +388,7 @@ class _ExplorePageState extends State<ExplorePage> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF118954).withOpacity( 0.9),
+                      color: const Color(0xFF118954).withOpacity(0.9),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -691,10 +420,10 @@ class _ExplorePageState extends State<ExplorePage> {
                           children: [
                             Text(
                               vendor['name'],
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF2C3E50),
+                                color: _getTextColor(),
                               ),
                             ),
                             const SizedBox(height: 6),
@@ -720,10 +449,10 @@ class _ExplorePageState extends State<ExplorePage> {
                           const SizedBox(width: 4),
                           Text(
                             vendor['rating'],
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF2C3E50),
+                              color: _getTextColor(),
                             ),
                           ),
                           Text(
@@ -739,7 +468,7 @@ class _ExplorePageState extends State<ExplorePage> {
                   ),
                   
                   const SizedBox(height: 12),
-                  const Divider(height: 1),
+                  Divider(height: 1, color: _getBorderColor()),
                   const SizedBox(height: 12),
                   
                   Row(

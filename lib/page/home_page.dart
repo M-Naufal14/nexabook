@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:nexabook/page/explore_page.dart';
+import 'package:nexabook/page/booking_page.dart';
 import 'package:nexabook/main.dart';
+import 'package:image_picker/image_picker.dart';
 import '../helper/database_helper.dart';
+import '../helper/image_helper.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -12,10 +15,21 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int selectedNav = 0;
-  List<Map<String, dynamic>> _bookings = [];
   int _bookingCount = 0;
   int _favoriteCount = 0;
-  bool _isLoading = true;
+  String? _userProfileImage;
+
+  Color _getScaffoldBg() => Theme.of(context).scaffoldBackgroundColor;
+  Color _getCardBg() => Theme.of(context).cardColor;
+  Color _getTextColor() => Theme.of(context).brightness == Brightness.dark
+      ? Colors.white
+      : const Color(0xFF2C3E50);
+  Color _getBorderColor() => Theme.of(context).brightness == Brightness.dark
+      ? const Color(0xFF334155)
+      : Colors.grey.shade200;
+  Color _getTextSubColor() => Theme.of(context).brightness == Brightness.dark
+      ? Colors.grey.shade400
+      : Colors.grey.shade600;
 
   @override
   void initState() {
@@ -26,27 +40,254 @@ class _HomePageState extends State<HomePage> {
   Future<void> _loadData() async {
     final email = DatabaseHelper.currentUserEmail;
     if (email != null) {
-      final bks = await DatabaseHelper.instance.getBookings(email);
       final bCount = await DatabaseHelper.instance.getBookingCount(email);
       final fCount = await DatabaseHelper.instance.getFavoriteCount(email);
+      final uImg = await DatabaseHelper.instance.getUserImage(email);
       if (mounted) {
         setState(() {
-          _bookings = bks;
           _bookingCount = bCount;
           _favoriteCount = fCount;
-          _isLoading = false;
+          _userProfileImage = uImg;
         });
       }
     } else {
       if (mounted) {
         setState(() {
-          _bookings = [];
           _bookingCount = 0;
           _favoriteCount = 0;
-          _isLoading = false;
+          _userProfileImage = null;
         });
       }
     }
+  }
+
+  void _selectProfilePhoto() {
+    final presets = [
+      'assets/images/bg.png',
+      'assets/images/bg1.png',
+      'assets/images/bg2.png',
+      'assets/images/nexavisual.png',
+      'assets/images/kisahkita.png',
+      'assets/images/arsipkita.png',
+    ];
+    final TextEditingController customUrlController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: _getCardBg(),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: _getCardBg(),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.85,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Pilih Foto Profil Anda',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _getTextColor()),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close, color: Colors.grey),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Ambil dari Galeri HP / Kamera:',
+                  style: TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF118954),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          elevation: 0,
+                        ),
+                        onPressed: () async {
+                          try {
+                            final ImagePicker picker = ImagePicker();
+                            final XFile? image = await picker.pickImage(
+                              source: ImageSource.gallery,
+                              maxWidth: 1000,
+                              maxHeight: 1000,
+                              imageQuality: 85,
+                            );
+                            if (image != null) {
+                              final email = DatabaseHelper.currentUserEmail;
+                              if (email != null) {
+                                await DatabaseHelper.instance.updateUserImage(email, image.path);
+                                if (context.mounted) {
+                                  Navigator.pop(context);
+                                  _loadData();
+                                }
+                              }
+                            }
+                          } catch (e) {
+                            debugPrint("Error picking image: $e");
+                          }
+                        },
+                        icon: const Icon(Icons.photo_library, color: Colors.white),
+                        label: const Text('Buka Galeri', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1E88E5),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          elevation: 0,
+                        ),
+                        onPressed: () async {
+                          try {
+                            final ImagePicker picker = ImagePicker();
+                            final XFile? image = await picker.pickImage(
+                              source: ImageSource.camera,
+                              maxWidth: 1000,
+                              maxHeight: 1000,
+                              imageQuality: 85,
+                            );
+                            if (image != null) {
+                              final email = DatabaseHelper.currentUserEmail;
+                              if (email != null) {
+                                await DatabaseHelper.instance.updateUserImage(email, image.path);
+                                if (context.mounted) {
+                                  Navigator.pop(context);
+                                  _loadData();
+                                }
+                              }
+                            }
+                          } catch (e) {
+                            debugPrint("Error taking photo: $e");
+                          }
+                        },
+                        icon: const Icon(Icons.camera_alt, color: Colors.white),
+                        label: const Text('Ambil Foto', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const Divider(),
+                const SizedBox(height: 12),
+                const Text(
+                  'Atau Gunakan URL Gambar Kustom:',
+                  style: TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: customUrlController,
+                        decoration: InputDecoration(
+                          hintText: 'Masukkan link gambar kustom (https://...)',
+                          hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                          filled: true,
+                          fillColor: Colors.grey.shade50,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFF118954), width: 1.5),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF118954),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        elevation: 0,
+                      ),
+                      onPressed: () async {
+                        final customUrl = customUrlController.text.trim();
+                        if (customUrl.isNotEmpty) {
+                          final email = DatabaseHelper.currentUserEmail;
+                          if (email != null) {
+                            await DatabaseHelper.instance.updateUserImage(email, customUrl);
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              _loadData();
+                            }
+                          }
+                        }
+                      },
+                      child: const Text('Gunakan', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const Divider(),
+                const SizedBox(height: 12),
+                const Text(
+                  'Atau Pilihan Preset Premium:',
+                  style: TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 10),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                  ),
+                  itemCount: presets.length,
+                  itemBuilder: (context, index) {
+                    final img = presets[index];
+                    return GestureDetector(
+                      onTap: () async {
+                        final email = DatabaseHelper.currentUserEmail;
+                        if (email != null) {
+                          await DatabaseHelper.instance.updateUserImage(email, img);
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                            _loadData();
+                          }
+                        }
+                      },
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.asset(img, fit: BoxFit.cover),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   String _getUserDisplayName() {
@@ -64,17 +305,163 @@ class _HomePageState extends State<HomePage> {
     return 'Pengguna Nexabook';
   }
 
+  Widget _buildSideDrawer() {
+    final role = DatabaseHelper.currentUserRole ?? 'Pelanggan';
+    final email = DatabaseHelper.currentUserEmail ?? 'naufal@gmail.com';
+    
+    return Drawer(
+      backgroundColor: _getScaffoldBg(),
+      child: SafeArea(
+        child: Column(
+          children: [
+            // Drawer Header
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: _getBorderColor(), width: 0.5)),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 24,
+                    backgroundColor: const Color(0xFF10B981).withOpacity(0.12),
+                    backgroundImage: _userProfileImage != null ? getCustomImageProvider(_userProfileImage!) : null,
+                    child: _userProfileImage == null ? const Icon(Icons.person, color: Color(0xFF10B981)) : null,
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _getUserDisplayName(),
+                          style: TextStyle(fontWeight: FontWeight.bold, color: _getTextColor(), fontSize: 16),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          email,
+                          style: const TextStyle(color: Colors.grey, fontSize: 11),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Drawer Items
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                children: [
+                  _buildDrawerItem(Icons.home_outlined, 'Dashboard Utama', 0),
+                  _buildDrawerItem(Icons.explore_outlined, 'Jelajahi Vendor', 1),
+                  _buildDrawerItem(Icons.calendar_today_outlined, 'Booking Saya', 2),
+                  _buildDrawerItem(Icons.chat_bubble_outline, 'Pesan / Obrolan', 3),
+                  _buildDrawerItem(Icons.person_outline, 'Profil & Pengaturan', 4),
+                  
+                  const Divider(height: 24),
+                  
+                  // Portal items based on Role
+                  if (role == 'Admin')
+                    ListTile(
+                      leading: const Icon(Icons.admin_panel_settings_outlined, color: Colors.blue),
+                      title: const Text('Portal Admin', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, '/admin-portal');
+                      },
+                    )
+                  else if (role == 'Vendor')
+                    ListTile(
+                      leading: const Icon(Icons.storefront_outlined, color: Color(0xFF10B981)),
+                      title: const Text('Portal Vendor', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, '/vendor-portal');
+                      },
+                    )
+                  else // Pelanggan/Customer has option to upgrade/become vendor
+                    ListTile(
+                      leading: const Icon(Icons.storefront_outlined, color: Colors.amber),
+                      title: const Text('Portal Vendor', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      subtitle: const Text('Daftar/Kelola Jasa Visual Anda', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, '/vendor-portal');
+                      },
+                    ),
+                ],
+              ),
+            ),
+            
+            // Footer with theme toggle & logout
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: _getBorderColor(), width: 0.5)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const ThemeToggleButton(),
+                  TextButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _showLogoutDialog();
+                    },
+                    icon: const Icon(Icons.logout, color: Colors.redAccent, size: 18),
+                    label: const Text('Keluar', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 13)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDrawerItem(IconData icon, String title, int tabIndex) {
+    final active = selectedNav == tabIndex;
+    final activeColor = const Color(0xFF10B981);
+    
+    return ListTile(
+      leading: Icon(icon, color: active ? activeColor : Colors.grey, size: 20),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontWeight: active ? FontWeight.bold : FontWeight.normal,
+          fontSize: 14,
+          color: active ? activeColor : _getTextColor(),
+        ),
+      ),
+      selected: active,
+      selectedTileColor: activeColor.withOpacity(0.08),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onTap: () {
+        Navigator.pop(context);
+        setState(() {
+          selectedNav = tabIndex;
+        });
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: _getScaffoldBg(),
+      drawer: _buildSideDrawer(),
       body: SafeArea(
         child: IndexedStack(
           index: selectedNav,
           children: [
             _buildHomeTab(),
             const ExplorePage(),
-            _buildBookingTab(),
+            const BookingPage(),
             _buildChatTab(),
             _buildProfileTab(),
           ],
@@ -86,11 +473,11 @@ class _HomePageState extends State<HomePage> {
         margin: const EdgeInsets.all(20),
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: _getCardBg(),
           borderRadius: BorderRadius.circular(30),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity( 0.08),
+              color: Colors.black.withOpacity(isDark ? 0.35 : 0.08),
               blurRadius: 20,
             ),
           ],
@@ -111,13 +498,14 @@ class _HomePageState extends State<HomePage> {
 
   // ICON BUTTON
   Widget iconButton(IconData icon) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F5),
+        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF5F5F5),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: Icon(icon, color: const Color(0xFF2C3E50)),
+      child: Icon(icon, color: _getTextColor()),
     );
   }
 
@@ -132,11 +520,11 @@ class _HomePageState extends State<HomePage> {
             height: 65,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: _getCardBg(),
               borderRadius: BorderRadius.circular(22),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity( 0.05),
+                  color: Colors.black.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.05),
                   blurRadius: 12,
                 ),
               ],
@@ -148,10 +536,10 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 8),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w500,
-              color: Color(0xFF2C3E50),
+              color: _getTextColor(),
             ),
           ),
         ],
@@ -171,11 +559,11 @@ class _HomePageState extends State<HomePage> {
       width: 190,
       margin: const EdgeInsets.only(right: 18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _getCardBg(),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity( 0.06),
+            color: Colors.black.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.06),
             blurRadius: 12,
           ),
         ],
@@ -205,10 +593,10 @@ class _HomePageState extends State<HomePage> {
                     Expanded(
                       child: Text(
                         name,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF2C3E50),
+                          color: _getTextColor(),
                         ),
                       ),
                     ),
@@ -248,10 +636,10 @@ class _HomePageState extends State<HomePage> {
                     const SizedBox(width: 4),
                     Text(
                       rating,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF2C3E50),
+                        color: _getTextColor(),
                       ),
                     ),
                   ],
@@ -294,6 +682,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildHomeTab() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       children: [
         // APP BAR
@@ -303,10 +692,10 @@ class _HomePageState extends State<HomePage> {
             vertical: 16,
           ),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: _getCardBg(),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity( 0.03),
+                color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
                 blurRadius: 10,
               ),
             ],
@@ -318,10 +707,13 @@ class _HomePageState extends State<HomePage> {
               Image.asset(
                 "assets/images/logo1.png",
                 width: 110,
+                color: isDark ? Colors.white : null,
               ),
               // ICON
               Row(
                 children: [
+                  const ThemeToggleButton(),
+                  const SizedBox(width: 8),
                   iconButton(Icons.notifications_none),
                   const SizedBox(width: 12),
                   iconButton(Icons.chat_bubble_outline),
@@ -615,256 +1007,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // 1. MOCKUP TAB JADWAL / BOOKING (Premium UI)
-  Widget _buildBookingTab() {
-    if (_isLoading) {
-      return const Scaffold(
-        backgroundColor: Color(0xFFF7F8FA),
-        body: Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF118954)),
-          ),
-        ),
-      );
-    }
 
-    if (_bookings.isEmpty) {
-      return Scaffold(
-        backgroundColor: const Color(0xFFF7F8FA),
-        appBar: AppBar(
-          backgroundColor: const Color(0xFFF7F8FA),
-          elevation: 0,
-          automaticallyImplyLeading: false,
-          title: const Text(
-            "Jadwal Booking",
-            style: TextStyle(color: Color(0xFF118954), fontWeight: FontWeight.bold, fontSize: 22),
-          ),
-        ),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF118954).withOpacity( 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.calendar_today_outlined,
-                    size: 80,
-                    color: Color(0xFF118954),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  "Belum Ada Booking",
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2C3E50),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  "Anda belum memesan layanan vendor apa pun. Temukan fotografer atau videografer terbaik Anda sekarang!",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade600,
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF118954),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        selectedNav = 1; // Pindah ke tab Eksplorasi
-                      });
-                    },
-                    child: const Text(
-                      "Mulai Jelajahi Vendor",
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF7F8FA),
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        title: const Text(
-          "Jadwal Booking",
-          style: TextStyle(color: Color(0xFF118954), fontWeight: FontWeight.bold, fontSize: 22),
-        ),
-      ),
-      body: ListView.builder(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.all(20).copyWith(bottom: 100),
-        itemCount: _bookings.length,
-        itemBuilder: (context, index) {
-          final bk = _bookings[index];
-          
-          Color statusColor = Colors.grey;
-          final status = bk['status']?.toString() ?? 'Aktif';
-          if (status == 'Aktif') {
-            statusColor = const Color(0xFF118954);
-          } else if (status.contains('Konfirmasi') || status.contains('Pending')) {
-            statusColor = Colors.orange;
-          } else if (status == 'Selesai') {
-            statusColor = Colors.blue;
-          }
-
-          return Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.grey.shade200),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity( 0.02), blurRadius: 10, offset: const Offset(0, 4)),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        bk['booking_code']?.toString() ?? 'BK-XXXXX',
-                        style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.bold),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: statusColor.withOpacity( 0.12),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          status,
-                          style: TextStyle(
-                            color: statusColor,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    bk['name']?.toString() ?? 'Vendor',
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2C3E50)),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    bk['type']?.toString() ?? 'Session',
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-                  ),
-                  const SizedBox(height: 16),
-                  const Divider(),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
-                      const SizedBox(width: 8),
-                      Text(
-                        bk['date']?.toString() ?? '',
-                        style: const TextStyle(fontSize: 13, color: Color(0xFF2C3E50), fontWeight: FontWeight.w500),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(Icons.payments_outlined, size: 16, color: Colors.grey),
-                      const SizedBox(width: 8),
-                      Text(
-                        bk['price']?.toString() ?? '',
-                        style: const TextStyle(fontSize: 13, color: Color(0xFF118954), fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFF118954)),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              selectedNav = 3; // Switch to chat
-                            });
-                          },
-                          child: const Text(
-                            "Hubungi Vendor",
-                            style: TextStyle(color: Color(0xFF118954), fontWeight: FontWeight.bold, fontSize: 12),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF118954),
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text("Invoice untuk ${bk['booking_code']} berhasil diunduh."),
-                                behavior: SnackBarBehavior.floating,
-                                backgroundColor: const Color(0xFF118954),
-                              ),
-                            );
-                          },
-                          child: const Text(
-                            "Lihat Invoice",
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
 
   // 2. MOCKUP TAB PESAN / CHAT (Premium UI)
   Widget _buildChatTab() {
@@ -896,9 +1039,9 @@ class _HomePageState extends State<HomePage> {
     ];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: _getScaffoldBg(),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF7F8FA),
+        backgroundColor: _getScaffoldBg(),
         elevation: 0,
         automaticallyImplyLeading: false,
         title: const Text(
@@ -915,18 +1058,18 @@ class _HomePageState extends State<HomePage> {
           return Container(
             margin: const EdgeInsets.only(bottom: 12),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: _getCardBg(),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.grey.shade200),
+              border: Border.all(color: _getBorderColor()),
               boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity( 0.01), blurRadius: 6),
+                BoxShadow(color: Colors.black.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.01), blurRadius: 6),
               ],
             ),
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               leading: CircleAvatar(
                 radius: 26,
-                backgroundColor: (ch['color'] as Color).withOpacity( 0.15),
+                backgroundColor: (ch['color'] as Color).withOpacity(0.15),
                 child: Text(
                   ch['initials'],
                   style: TextStyle(color: ch['color'] as Color, fontWeight: FontWeight.bold),
@@ -937,7 +1080,7 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   Text(
                     ch['name'],
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2C3E50), fontSize: 16),
+                    style: TextStyle(fontWeight: FontWeight.bold, color: _getTextColor(), fontSize: 16),
                   ),
                   Text(
                     ch['time'],
@@ -953,7 +1096,7 @@ class _HomePageState extends State<HomePage> {
                     Expanded(
                       child: Text(
                         ch['msg'],
-                        style: TextStyle(color: Colors.grey.shade600, fontSize: 13, overflow: TextOverflow.ellipsis),
+                        style: TextStyle(color: _getTextSubColor(), fontSize: 13, overflow: TextOverflow.ellipsis),
                       ),
                     ),
                     if (ch['unread'] > 0)
@@ -979,9 +1122,9 @@ class _HomePageState extends State<HomePage> {
   // 3. MOCKUP TAB PROFIL & LOGOUT FUNGSIONAL (Premium UI)
   Widget _buildProfileTab() {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: _getScaffoldBg(),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF7F8FA),
+        backgroundColor: _getScaffoldBg(),
         elevation: 0,
         automaticallyImplyLeading: false,
         title: const Text(
@@ -1013,10 +1156,31 @@ class _HomePageState extends State<HomePage> {
             ),
             child: Column(
               children: [
-                const CircleAvatar(
-                  radius: 40,
-                  backgroundColor: Colors.white,
-                  child: Icon(Icons.person, size: 50, color: Color(0xFF118954)),
+                GestureDetector(
+                  onTap: _selectProfilePhoto,
+                  child: Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 40,
+                        backgroundColor: Colors.white,
+                        backgroundImage: _userProfileImage != null
+                            ? getCustomImageProvider(_userProfileImage!)
+                            : null,
+                        child: _userProfileImage == null
+                            ? const Icon(Icons.person, size: 50, color: Color(0xFF118954))
+                            : null,
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(color: Color(0xFF118954), shape: BoxShape.circle),
+                          child: const Icon(Icons.camera_alt, size: 14, color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -1049,17 +1213,17 @@ class _HomePageState extends State<HomePage> {
           Container(
             padding: const EdgeInsets.symmetric(vertical: 18),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: _getCardBg(),
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.grey.shade200),
+              border: Border.all(color: _getBorderColor()),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildStatItem(_bookingCount.toString(), "Total Booking"),
-                Container(width: 1, height: 30, color: Colors.grey.shade200),
+                Container(width: 1, height: 30, color: _getBorderColor()),
                 _buildStatItem(_favoriteCount.toString(), "Favorit"),
-                Container(width: 1, height: 30, color: Colors.grey.shade200),
+                Container(width: 1, height: 30, color: _getBorderColor()),
                 _buildStatItem("12", "Obrolan"),
               ],
             ),
@@ -1069,20 +1233,20 @@ class _HomePageState extends State<HomePage> {
           // Menu Options
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: _getCardBg(),
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.grey.shade200),
+              border: Border.all(color: _getBorderColor()),
             ),
             child: Column(
               children: [
                 _buildProfileMenuTile(Icons.person_outline, "Edit Profil"),
-                const Divider(height: 1, indent: 56),
+                Divider(height: 1, indent: 56, color: _getBorderColor()),
                 _buildProfileMenuTile(Icons.notifications_none, "Notifikasi"),
-                const Divider(height: 1, indent: 56),
+                Divider(height: 1, indent: 56, color: _getBorderColor()),
                 _buildProfileMenuTile(Icons.help_outline, "Pusat Bantuan"),
-                const Divider(height: 1, indent: 56),
+                Divider(height: 1, indent: 56, color: _getBorderColor()),
                 _buildProfileMenuTile(Icons.info_outline, "Tentang Aplikasi"),
-                const Divider(height: 1, indent: 56),
+                Divider(height: 1, indent: 56, color: _getBorderColor()),
                 _buildProfileMenuTile(
                   Icons.logout,
                   "Keluar",
@@ -1103,7 +1267,7 @@ class _HomePageState extends State<HomePage> {
       children: [
         Text(
           count,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2C3E50)),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _getTextColor()),
         ),
         const SizedBox(height: 4),
         Text(
@@ -1121,6 +1285,8 @@ class _HomePageState extends State<HomePage> {
     Color iconColor = const Color(0xFF118954),
     VoidCallback? onTap,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final defaultTitleColor = isDark ? Colors.white : const Color(0xFF2C3E50);
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       leading: Container(
@@ -1133,7 +1299,11 @@ class _HomePageState extends State<HomePage> {
       ),
       title: Text(
         title,
-        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: textColor),
+        style: TextStyle(
+          fontWeight: FontWeight.bold, 
+          fontSize: 14, 
+          color: textColor == const Color(0xFF2C3E50) ? defaultTitleColor : textColor,
+        ),
       ),
       trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
       onTap: onTap ?? () {},
@@ -1145,12 +1315,16 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (context) {
         return AlertDialog(
+          backgroundColor: _getCardBg(),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: const Text(
+          title: Text(
             "Konfirmasi Keluar",
-            style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2C3E50)),
+            style: TextStyle(fontWeight: FontWeight.bold, color: _getTextColor()),
           ),
-          content: const Text("Apakah Anda yakin ingin keluar dari akun Anda saat ini?"),
+          content: Text(
+            "Apakah Anda yakin ingin keluar dari akun Anda saat ini?",
+            style: TextStyle(color: _getTextSubColor()),
+          ),
           actionsPadding: const EdgeInsets.only(bottom: 20, right: 20),
           actions: [
             TextButton(
@@ -1165,6 +1339,10 @@ class _HomePageState extends State<HomePage> {
                 elevation: 0,
               ),
               onPressed: () {
+                // Clear session
+                DatabaseHelper.currentUserEmail = null;
+                DatabaseHelper.currentUserRole = null;
+
                 // Route back to Splash/Start screen
                 Navigator.pop(context); // close dialog
                 Navigator.of(context).pushAndRemoveUntil(

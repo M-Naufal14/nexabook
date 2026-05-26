@@ -34,9 +34,21 @@ class DatabaseHelper {
 
     return await openDatabase(
       pathString,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      try {
+        await db.execute('ALTER TABLE vendors ADD COLUMN owner_email TEXT');
+      } catch (e) {}
+      try {
+        await db.execute('ALTER TABLE users ADD COLUMN image TEXT');
+      } catch (e) {}
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -46,7 +58,8 @@ class DatabaseHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         email TEXT UNIQUE,
         password TEXT,
-        role TEXT
+        role TEXT,
+        image TEXT
       )
     ''');
 
@@ -54,6 +67,7 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE vendors (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        owner_email TEXT,
         name TEXT,
         type TEXT,
         rating TEXT,
@@ -108,11 +122,37 @@ class DatabaseHelper {
       'password': 'admin',
       'role': 'Admin',
     });
+    await db.insert('users', {
+      'email': 'nexa@vendor.com',
+      'password': 'vendor123',
+      'role': 'Vendor',
+    });
+    await db.insert('users', {
+      'email': 'kisah@vendor.com',
+      'password': 'vendor123',
+      'role': 'Vendor',
+    });
+    await db.insert('users', {
+      'email': 'arsip@vendor.com',
+      'password': 'vendor123',
+      'role': 'Vendor',
+    });
+    await db.insert('users', {
+      'email': 'lensa@vendor.com',
+      'password': 'vendor123',
+      'role': 'Vendor',
+    });
+    await db.insert('users', {
+      'email': 'frame@vendor.com',
+      'password': 'vendor123',
+      'role': 'Vendor',
+    });
   }
 
   Future<void> _seedVendors(Database db) async {
     final List<Map<String, dynamic>> vendors = [
       {
+        'owner_email': 'nexa@vendor.com',
         'name': 'Nexa Visual',
         'type': 'Fotografer',
         'rating': '5.0',
@@ -126,6 +166,7 @@ class DatabaseHelper {
         'features': jsonEncode(['2 Fotografer Profesional', 'Unlimited Shoots', 'Album Cetak Premium 20x30cm', 'Semua File di Google Drive', 'Gratis Frame 16R']),
       },
       {
+        'owner_email': 'kisah@vendor.com',
         'name': 'Kisah Kita',
         'type': 'Fotografer',
         'rating': '4.9',
@@ -139,6 +180,7 @@ class DatabaseHelper {
         'features': jsonEncode(['1 Fotografer + 1 Asisten', '50 Foto Ter-edit', 'USB Flashdisk Berisi Semua File', 'Cetak 10 Lembar 4R', 'Photobook 40 Halaman']),
       },
       {
+        'owner_email': 'arsip@vendor.com',
         'name': 'Arsip Kita',
         'type': 'Videografer',
         'rating': '4.8',
@@ -152,6 +194,7 @@ class DatabaseHelper {
         'features': jsonEncode(['2 Videografer & Drone Pilot', 'Video Highlight 3 Menit (Teaser)', 'Video Full Dokumenter 15 Menit', 'Kualitas Video 4K Ultra HD', 'Revisi Video 2 Kali']),
       },
       {
+        'owner_email': 'lensa@vendor.com',
         'name': 'Lensa Creative',
         'type': 'Fotografer',
         'rating': '4.7',
@@ -165,6 +208,7 @@ class DatabaseHelper {
         'features': jsonEncode(['1 Fotografer Studio', 'Sesi Foto 2 Jam', 'Gratis Sewa Kostum Wisuda', '10 Foto Cetak + Frame', 'Softcopy Google Drive']),
       },
       {
+        'owner_email': 'frame@vendor.com',
         'name': 'Frame Moment',
         'type': 'Videografer',
         'rating': '4.6',
@@ -189,9 +233,29 @@ class DatabaseHelper {
       'user_email': 'naufal@gmail.com',
       'vendor_id': 1,
       'type': 'Wedding Session',
-      'date': 'Sabtu, 24 Mei 2026',
+      'date': 'Sabtu, 24 Mei 2026 (19:00 WIB)',
       'price': 'Rp3.500.000',
       'status': 'Aktif',
+    });
+
+    await db.insert('bookings', {
+      'booking_code': 'BK-88371',
+      'user_email': 'naufal@gmail.com',
+      'vendor_id': 2,
+      'type': 'Intimate Lamaran',
+      'date': 'Senin, 18 November 2026 (09:00 WIB)',
+      'price': 'Rp2.800.000',
+      'status': 'Menunggu',
+    });
+
+    await db.insert('bookings', {
+      'booking_code': 'BK-77462',
+      'user_email': 'naufal@gmail.com',
+      'vendor_id': 3,
+      'type': 'Cinematic Highlight',
+      'date': 'Kamis, 01 September 2026 (17:00 WIB)',
+      'price': 'Rp2.500.000',
+      'status': 'Selesai',
     });
 
     // Seed default favorit
@@ -324,7 +388,7 @@ class DatabaseHelper {
 
   // ==================== CRUD BOOKING ====================
 
-  Future<void> createBooking(String email, int vendorId, String type, String price) async {
+  Future<void> createBooking(String email, int vendorId, String type, String price, [String? customDate]) async {
     final db = await database;
     
     // Ambil data vendor
@@ -335,19 +399,24 @@ class DatabaseHelper {
     final now = DateTime.now();
     final randomCode = 'BK-${(10000 + (db.hashCode % 90000)) + (now.millisecond * 17) % 90000}';
 
-    // Format tanggal indonesia e.g. Sabtu, 24 Mei 2026
-    final days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-    final months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-    final dayName = days[now.weekday % 7];
-    final monthName = months[now.month - 1];
-    final formattedDate = '$dayName, ${now.day} $monthName ${now.year}';
+    String dateToSave;
+    if (customDate != null) {
+      dateToSave = customDate;
+    } else {
+      // Format tanggal indonesia e.g. Sabtu, 24 Mei 2026
+      final days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+      final months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+      final dayName = days[now.weekday % 7];
+      final monthName = months[now.month - 1];
+      dateToSave = '$dayName, ${now.day} $monthName ${now.year}';
+    }
 
     await db.insert('bookings', {
       'booking_code': randomCode,
       'user_email': email.toLowerCase(),
       'vendor_id': vendorId,
       'type': type,
-      'date': formattedDate,
+      'date': dateToSave,
       'price': price,
       'status': 'Aktif',
     });
@@ -356,7 +425,7 @@ class DatabaseHelper {
   Future<List<Map<String, dynamic>>> getBookings(String email) async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.rawQuery('''
-      SELECT b.*, v.name as name, v.image as image 
+      SELECT b.*, v.name as name, v.image as image, v.location as location
       FROM bookings b
       JOIN vendors v ON b.vendor_id = v.id
       WHERE b.user_email = ?
@@ -374,5 +443,163 @@ class DatabaseHelper {
       whereArgs: [email.toLowerCase()],
     );
     return maps.length;
+  }
+
+  // ==================== USER PROFILE IMAGE ====================
+
+  Future<String?> getUserImage(String email) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'users',
+      columns: ['image'],
+      where: 'email = ?',
+      whereArgs: [email.toLowerCase()],
+    );
+    if (maps.isNotEmpty) {
+      return maps.first['image'] as String?;
+    }
+    return null;
+  }
+
+  Future<void> updateUserImage(String email, String imagePath) async {
+    final db = await database;
+    await db.update(
+      'users',
+      {'image': imagePath},
+      where: 'email = ?',
+      whereArgs: [email.toLowerCase()],
+    );
+  }
+
+  // ==================== CRUD CUSTOM VENDOR PORTAL ====================
+
+  Future<Map<String, dynamic>?> getVendorByOwnerEmail(String email) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'vendors',
+      where: 'owner_email = ?',
+      whereArgs: [email.toLowerCase()],
+    );
+    if (maps.isNotEmpty) {
+      final featuresStr = maps.first['features'] as String?;
+      List<String> featuresList = [];
+      if (featuresStr != null) {
+        try {
+          featuresList = List<String>.from(jsonDecode(featuresStr));
+        } catch (e) {
+          featuresList = [];
+        }
+      }
+      final vendorMap = Map<String, dynamic>.from(maps.first);
+      vendorMap['features'] = featuresList;
+      return vendorMap;
+    }
+    return null;
+  }
+
+  Future<bool> createOrUpdateVendor(Map<String, dynamic> vendorData) async {
+    final db = await database;
+    final String email = (vendorData['owner_email'] as String).toLowerCase();
+    
+    final existing = await getVendorByOwnerEmail(email);
+    
+    final map = Map<String, dynamic>.from(vendorData);
+    map['owner_email'] = email;
+    if (map['features'] is List) {
+      map['features'] = jsonEncode(map['features']);
+    }
+
+    try {
+      if (existing != null) {
+        await db.update(
+          'vendors',
+          map,
+          where: 'id = ?',
+          whereArgs: [existing['id']],
+        );
+      } else {
+        map['rating'] = '5.0';
+        map['ratingRaw'] = 5.0;
+        map['reviews'] = 0;
+        map['image'] = map['image'] ?? 'assets/images/bg.png';
+        await db.insert('vendors', map);
+      }
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getBookingsForVendor(int vendorId) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.rawQuery('''
+      SELECT b.*, u.email as user_email
+      FROM bookings b
+      LEFT JOIN users u ON b.user_email = u.email
+      WHERE b.vendor_id = ?
+      ORDER BY b.id DESC
+    ''', [vendorId]);
+    return maps;
+  }
+
+  Future<bool> updateBookingStatus(int bookingId, String status) async {
+    final db = await database;
+    try {
+      await db.update(
+        'bookings',
+        {'status': status},
+        where: 'id = ?',
+        whereArgs: [bookingId],
+      );
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // ==================== CRUD ADMIN PORTAL ====================
+
+  Future<List<Map<String, dynamic>>> getAllUsersAdmin() async {
+    final db = await database;
+    return await db.query('users', orderBy: 'id DESC');
+  }
+
+  Future<List<Map<String, dynamic>>> getAllBookingsAdmin() async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.rawQuery('''
+      SELECT b.*, v.name as name, v.image as image 
+      FROM bookings b
+      JOIN vendors v ON b.vendor_id = v.id
+      ORDER BY b.id DESC
+    ''');
+    return maps;
+  }
+
+  Future<bool> deleteVendor(int id) async {
+    final db = await database;
+    try {
+      await db.delete('vendors', where: 'id = ?', whereArgs: [id]);
+      await db.delete('favorites', where: 'vendor_id = ?', whereArgs: [id]);
+      await db.delete('bookings', where: 'vendor_id = ?', whereArgs: [id]);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteUser(int id) async {
+    final db = await database;
+    try {
+      final maps = await db.query('users', where: 'id = ?', whereArgs: [id]);
+      if (maps.isNotEmpty && maps.first['role'] == 'Admin') return false;
+
+      final email = maps.first['email'] as String;
+      await db.delete('users', where: 'id = ?', whereArgs: [id]);
+      await db.delete('favorites', where: 'user_email = ?', whereArgs: [email]);
+      await db.delete('bookings', where: 'user_email = ?', whereArgs: [email]);
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 }
