@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:nexabook/page/explore_page.dart';
 import 'package:nexabook/page/booking_page.dart';
 import 'package:nexabook/main.dart';
@@ -452,45 +453,89 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Scaffold(
-      backgroundColor: _getScaffoldBg(),
-      drawer: _buildSideDrawer(),
-      body: SafeArea(
-        child: IndexedStack(
-          index: selectedNav,
-          children: [
-            _buildHomeTab(),
-            const ExplorePage(),
-            const BookingPage(),
-            _buildChatTab(),
-            _buildProfileTab(),
-          ],
-        ),
-      ),
-
-      // FLOATING NAVBAR
-      bottomNavigationBar: Container(
-        margin: const EdgeInsets.all(20),
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: _getCardBg(),
-          borderRadius: BorderRadius.circular(30),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.35 : 0.08),
-              blurRadius: 20,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        if (selectedNav != 0) {
+          setState(() {
+            selectedNav = 0;
+          });
+        } else {
+          final exitApp = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              backgroundColor: _getCardBg(),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Text(
+                'Keluar Aplikasi',
+                style: TextStyle(fontWeight: FontWeight.bold, color: _getTextColor()),
+              ),
+              content: Text(
+                'Apakah Anda yakin ingin keluar dari aplikasi NexaBook?',
+                style: TextStyle(color: _getTextColor()),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Batal', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF10B981),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Keluar', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                ),
+              ],
             ),
-          ],
+          );
+          if (exitApp == true) {
+            SystemNavigator.pop();
+          }
+        }
+      },
+      child: Scaffold(
+        backgroundColor: _getScaffoldBg(),
+        drawer: _buildSideDrawer(),
+        body: SafeArea(
+          child: IndexedStack(
+            index: selectedNav,
+            children: [
+              _buildHomeTab(),
+              const ExplorePage(),
+              const BookingPage(),
+              _buildChatTab(),
+              _buildProfileTab(),
+            ],
+          ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            navItem(Icons.home, 0),
-            navItem(Icons.explore, 1),
-            navItem(Icons.calendar_today, 2),
-            navItem(Icons.chat_bubble_outline, 3),
-            navItem(Icons.person_outline, 4),
-          ],
+
+        // FLOATING NAVBAR
+        bottomNavigationBar: Container(
+          margin: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: _getCardBg(),
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(isDark ? 0.35 : 0.08),
+                blurRadius: 20,
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              navItem(Icons.home, 0),
+              navItem(Icons.explore, 1),
+              navItem(Icons.calendar_today, 2),
+              navItem(Icons.chat_bubble_outline, 3),
+              navItem(Icons.person_outline, 4),
+            ],
+          ),
         ),
       ),
     );
