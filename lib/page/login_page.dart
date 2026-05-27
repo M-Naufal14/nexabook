@@ -14,7 +14,6 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  String? selectedRole;
   bool _obscurePassword = true;
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -27,20 +26,8 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _handleLogin() async {
-    final role = selectedRole;
     final email = _emailController.text.trim();
     final password = _passwordController.text;
-
-    if (role == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text("Silakan pilih peran login terlebih dahulu!"),
-          backgroundColor: Colors.orange.shade800,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
 
     if (email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -75,15 +62,16 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
 
-    final user = await DatabaseHelper.instance.loginUser(email, password, role);
+    final user = await DatabaseHelper.instance.loginUserWithoutRole(email, password);
 
     // Tutup loading dialog
     if (mounted) Navigator.pop(context);
 
     if (user != null) {
+      final userRole = user['role'] as String?;
       // Set session aktif
       DatabaseHelper.currentUserEmail = user['email'] as String?;
-      DatabaseHelper.currentUserRole = user['role'] as String?;
+      DatabaseHelper.currentUserRole = userRole;
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -93,13 +81,13 @@ class _LoginPageState extends State<LoginPage> {
             behavior: SnackBarBehavior.floating,
           ),
         );
-        if (role == 'Admin') {
+        if (userRole == 'Admin') {
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(builder: (context) => const AdminPortalPage()),
             (route) => false,
           );
-        } else if (role == 'Vendor') {
+        } else if (userRole == 'Vendor') {
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(builder: (context) => const VendorPortalPage()),
@@ -117,7 +105,7 @@ class _LoginPageState extends State<LoginPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text("Email, password, atau peran salah!"),
+            content: const Text("Email atau kata sandi salah!"),
             backgroundColor: Colors.red.shade800,
             behavior: SnackBarBehavior.floating,
           ),
@@ -257,72 +245,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Label Role
-                    Text(
-                      "Masuk Sebagai",
-                      style: TextStyle(
-                        color: textMainColor,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
 
-                    // Dropdown Role
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      decoration: BoxDecoration(
-                        color: inputBg,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: borderCol),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          isExpanded: true,
-                          value: selectedRole,
-                          dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-                          hint: Row(
-                            children: [
-                              const Icon(Icons.person_outline, color: Colors.grey, size: 20),
-                              const SizedBox(width: 10),
-                              Text("Pilih Disini", style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
-                            ],
-                          ),
-                          items: ["Admin", "Vendor", "Pelanggan"]
-                              .map((item) => DropdownMenuItem<String>(
-                                    value: item,
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          item == "Admin"
-                                              ? Icons.admin_panel_settings_outlined
-                                              : item == "Vendor"
-                                                  ? Icons.storefront_outlined
-                                                  : Icons.person_outline,
-                                          color: const Color(0xFF118954),
-                                          size: 20,
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Text(
-                                          item,
-                                          style: TextStyle(
-                                            color: textMainColor,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ))
-                              .toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              selectedRole = value;
-                            });
-                          },
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
 
                     // Label Email
                     Text(
@@ -482,42 +405,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        const Expanded(child: Divider()),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                          child: Text("Atau", style: TextStyle(color: textSubColor, fontSize: 12)),
-                        ),
-                        const Expanded(child: Divider()),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Color(0xFF118954), width: 1.5),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                        ),
-                        onPressed: () {
-                          Navigator.pushNamed(context, '/vendor-portal');
-                        },
-                        icon: const Icon(Icons.storefront_outlined, color: Color(0xFF118954), size: 20),
-                        label: const Text(
-                          "Buka Vendor Portal",
-                          style: TextStyle(
-                            color: Color(0xFF118954),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                    ),
+
                   ],
                 ),
               ),

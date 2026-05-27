@@ -3,6 +3,9 @@ import 'package:image_picker/image_picker.dart';
 import '../helper/database_helper.dart';
 import '../helper/image_helper.dart';
 import '../main.dart';
+import 'vendor_order_detail_page.dart';
+import 'vendor_chat_room_page.dart';
+
 
 class VendorPortalPage extends StatefulWidget {
   const VendorPortalPage({super.key});
@@ -720,6 +723,7 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
       },
       child: Scaffold(
         backgroundColor: _getScaffoldBg(),
+        drawer: _buildDrawer(),
         appBar: AppBar(
           backgroundColor: _getScaffoldBg(),
           elevation: 0,
@@ -839,6 +843,8 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
           'location': 'Grand Ballroom, Jakarta',
           'date': '24 Oct, 2023',
           'type': 'Wedding Session',
+          'price': 'Rp4.500.000',
+          'user_email': 'amanda.wijaya@gmail.com',
           'is_mock': true,
         },
         {
@@ -848,6 +854,8 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
           'location': 'Outdoor Studio, Bandung',
           'date': '28 Oct, 2023',
           'type': 'Photo Session',
+          'price': 'Rp1.800.000',
+          'user_email': 'rudi.santoso@gmail.com',
           'is_mock': true,
         },
         {
@@ -857,6 +865,8 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
           'location': 'Convention Center, Surabaya',
           'date': '02 Nov, 2023',
           'type': 'Video & Launch',
+          'price': 'Rp2.500.000',
+          'user_email': 'siti.aisyah@gmail.com',
           'is_mock': true,
         },
       ]);
@@ -1040,94 +1050,107 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
     final isMock = bk['is_mock'] == true;
     final bookingCode = bk['booking_code']?.toString() ?? 'BK-XXXX';
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _getCardBg(),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _getBorderColor()),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.01),
-            blurRadius: 6,
+    return GestureDetector(
+      onTap: () async {
+        final reload = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => VendorOrderDetailPage(booking: bk),
           ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Circular Avatar Icon/Photo
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: const Color(0xFF10B981).withOpacity(0.15),
-            child: const Icon(Icons.person, color: Color(0xFF10B981), size: 20),
-          ),
-          const SizedBox(width: 14),
-          
-          // Customer Details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  bk['name']?.toString() ?? 'Pelanggan',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: _getTextColor()),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.location_on_outlined, color: Colors.grey, size: 12),
-                    const SizedBox(width: 2),
-                    Expanded(
-                      child: Text(
-                        bk['location']?.toString() ?? 'Jakarta',
-                        style: const TextStyle(fontSize: 11, color: Colors.grey),
-                        overflow: TextOverflow.ellipsis,
+        );
+        if (reload == true) {
+          _loadVendorData();
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: _getCardBg(),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: _getBorderColor()),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(isDark ? 0.2 : 0.01),
+              blurRadius: 6,
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Circular Avatar Icon/Photo
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: const Color(0xFF10B981).withOpacity(0.15),
+              child: const Icon(Icons.person, color: Color(0xFF10B981), size: 20),
+            ),
+            const SizedBox(width: 14),
+            
+            // Customer Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    bk['name']?.toString() ?? 'Pelanggan',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: _getTextColor()),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on_outlined, color: Colors.grey, size: 12),
+                      const SizedBox(width: 2),
+                      Expanded(
+                        child: Text(
+                          bk['location']?.toString() ?? 'Jakarta',
+                          style: const TextStyle(fontSize: 11, color: Colors.grey),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  "${bk['date']} • ${bk['type']}",
-                  style: TextStyle(fontSize: 10, color: _getTextSubColor(), fontWeight: FontWeight.w500),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-
-          // Complete Button (emerald green background, black bold text, rounded corners)
-          SizedBox(
-            height: 36,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF10B981),
-                foregroundColor: Colors.black,
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-              ),
-              onPressed: () {
-                if (isMock) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Pesanan simulasi "$bookingCode" berhasil diselesaikan!'),
-                      behavior: SnackBarBehavior.floating,
-                      backgroundColor: const Color(0xFF10B981),
-                    ),
-                  );
-                } else {
-                  _handleUpdateBooking(bk['id'] as int, bookingCode, 'complete');
-                }
-              },
-              child: const Text(
-                'Complete',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "${bk['date']} • ${bk['type']}",
+                    style: TextStyle(fontSize: 10, color: _getTextSubColor(), fontWeight: FontWeight.w500),
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
+            const SizedBox(width: 10),
+  
+            // Complete Button (emerald green background, black bold text, rounded corners)
+            SizedBox(
+              height: 36,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF10B981),
+                  foregroundColor: Colors.black,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                ),
+                onPressed: () {
+                  if (isMock) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Pesanan simulasi "$bookingCode" berhasil diselesaikan!'),
+                        behavior: SnackBarBehavior.floating,
+                        backgroundColor: const Color(0xFF10B981),
+                      ),
+                    );
+                  } else {
+                    _handleUpdateBooking(bk['id'] as int, bookingCode, 'complete');
+                  }
+                },
+                child: const Text(
+                  'Complete',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1330,6 +1353,8 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
         'time': '10:00 - 12:00',
         'status': 'Dikonfirmasi',
         'type': 'Wedding Session',
+        'price': 'Rp4.500.000',
+        'user_email': 'andi.pratama@gmail.com',
         'is_mock': true,
       },
       {
@@ -1340,6 +1365,8 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
         'time': '13:00 - 15:00',
         'status': 'Menunggu',
         'type': 'Engagement Session',
+        'price': 'Rp2.800.000',
+        'user_email': 'siti.aminah@gmail.com',
         'is_mock': true,
       },
       {
@@ -1350,6 +1377,8 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
         'time': '15:00 - 17:00',
         'status': 'Dikonfirmasi',
         'type': 'Prewedding Portrait',
+        'price': 'Rp3.500.000',
+        'user_email': 'budi.santosa@gmail.com',
         'is_mock': true,
       },
     ];
@@ -1366,6 +1395,8 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
         'time': '16:00 - 18:00', // Default mock schedule time
         'status': dbBk['status'] == 'Aktif' ? 'Dikonfirmasi' : 'Menunggu',
         'type': dbBk['type']?.toString() ?? 'Booking Layanan',
+        'price': dbBk['price']?.toString() ?? 'Rp3.500.000',
+        'user_email': dbBk['user_email']?.toString() ?? 'klien@gmail.com',
         'is_mock': false,
       });
     }
@@ -1483,6 +1514,8 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
                 isMock: item['is_mock'] == true,
                 bookingId: item['id'] as int?,
                 bookingCode: item['booking_code'],
+                price: item['price'],
+                userEmail: item['user_email'],
               )),
           const SizedBox(height: 24),
 
@@ -1688,6 +1721,8 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
     required bool isMock,
     int? bookingId,
     String? bookingCode,
+    String? price,
+    String? userEmail,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bool isConfirmed = status == 'Dikonfirmasi';
@@ -1787,8 +1822,28 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
                       elevation: 0,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
-                    onPressed: () {
-                      _showDetailPopup(clientName, type, location, time, "Dikonfirmasi", bookingCode ?? "BK-MOCK");
+                    onPressed: () async {
+                      final bookingMap = {
+                        'id': bookingId,
+                        'booking_code': bookingCode ?? 'BK-MOCK',
+                        'user_email': userEmail ?? (clientName.toLowerCase().replaceAll(' ', '') + '@gmail.com'),
+                        'name': clientName,
+                        'location': location,
+                        'time': time,
+                        'status': status == 'Dikonfirmasi' ? 'Aktif' : status,
+                        'type': type,
+                        'price': price ?? 'Rp3.500.000',
+                        'is_mock': isMock,
+                      };
+                      final reload = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => VendorOrderDetailPage(booking: bookingMap),
+                        ),
+                      );
+                      if (reload == true) {
+                        _loadVendorData();
+                      }
                     },
                     child: Text(
                       'LIHAT DETAIL',
@@ -1966,6 +2021,158 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
     );
   }
 
+  Widget _buildDrawer() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textMain = _getTextColor();
+    final textSub = _getTextSubColor();
+
+    return Drawer(
+      backgroundColor: _getScaffoldBg(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Drawer Header
+          Container(
+            padding: const EdgeInsets.only(top: 60, left: 24, right: 24, bottom: 24),
+            color: isDark ? const Color(0xFF1E293B) : Colors.grey.shade100,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Circular Avatar Photo
+                CircleAvatar(
+                  radius: 36,
+                  backgroundColor: const Color(0xFF10B981).withOpacity(0.12),
+                  backgroundImage: _vendorProfile != null && _vendorProfile!['image'] != null
+                      ? getCustomImageProvider(_vendorProfile!['image']!)
+                      : null,
+                  child: _vendorProfile == null || _vendorProfile!['image'] == null
+                      ? const Icon(Icons.person, size: 36, color: Color(0xFF10B981))
+                      : null,
+                ),
+                const SizedBox(height: 16),
+                // Vendor Name
+                Text(
+                  _vendorProfile != null ? _vendorProfile!['name'] ?? 'Studio Vendor' : 'Studio Vendor',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: textMain,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                // Email
+                Text(
+                  DatabaseHelper.currentUserEmail ?? 'vendor@nexabook.com',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: textSub,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Drawer Navigation List Tiles
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              children: [
+                // 1. Dashboard
+                _buildDrawerItem(
+                  icon: Icons.dashboard_outlined,
+                  title: 'Dashboard',
+                  onTap: () {
+                    Navigator.pop(context); // Close drawer
+                    _tabController!.animateTo(0); // Jump to Dashboard tab
+                  },
+                ),
+                // 2. Detail Profil
+                _buildDrawerItem(
+                  icon: Icons.account_circle_outlined,
+                  title: 'Detail Profil',
+                  onTap: () {
+                    Navigator.pop(context); // Close drawer
+                    setState(() {
+                      _activeTabIndex = 0; // Profile Info sub-tab
+                    });
+                    _tabController!.animateTo(2); // Jump to Edit Profil tab
+                  },
+                ),
+                // 3. Pengaturan
+                _buildDrawerItem(
+                  icon: Icons.settings_outlined,
+                  title: 'Pengaturan',
+                  onTap: () {
+                    Navigator.pop(context); // Close drawer
+                    setState(() {
+                      _activeTabIndex = 3; // Settings sub-tab
+                    });
+                    _tabController!.animateTo(2); // Jump to Edit Profil tab
+                  },
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
+                  child: Divider(),
+                ),
+                // 4. Keluar (Logout)
+                _buildDrawerItem(
+                  icon: Icons.logout_outlined,
+                  title: 'Keluar',
+                  iconColor: Colors.redAccent,
+                  textColor: Colors.redAccent,
+                  onTap: () {
+                    Navigator.pop(context); // Close drawer
+                    _showLogoutDialog(); // Trigger logout confirmation
+                  },
+                ),
+              ],
+            ),
+          ),
+          // Footer
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Text(
+              'NexaBook Vendor v1.0.0',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 10,
+                color: textSub.withOpacity(0.6),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDrawerItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    Color? iconColor,
+    Color? textColor,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: iconColor ?? const Color(0xFF10B981), size: 22),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          color: textColor ?? _getTextColor(),
+          fontSize: 14,
+        ),
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onTap: onTap,
+    );
+  }
+
   Widget _buildMapPin(String label, Color color) {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -2023,136 +2230,6 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
   }
 
   // DIALOG BUILDERS & HELPER POPUPS
-  void _showDetailPopup(String name, String type, String location, String time, String status, String code) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: _getCardBg(),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.5,
-        maxChildSize: 0.75,
-        minChildSize: 0.3,
-        expand: false,
-        builder: (context, scrollController) => ListView(
-          controller: scrollController,
-          padding: const EdgeInsets.all(24),
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 5,
-                margin: const EdgeInsets.only(bottom: 24),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade400,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Detail Agenda',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: _getTextColor(),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF10B981).withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    code,
-                    style: const TextStyle(
-                      color: Color(0xFF10B981),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            _buildAgendaDetailRow('Nama Klien', name),
-            const Divider(height: 24),
-            _buildAgendaDetailRow('Jenis Layanan', type),
-            const Divider(height: 24),
-            _buildAgendaDetailRow('Waktu / Jadwal', time),
-            const Divider(height: 24),
-            _buildAgendaDetailRow('Lokasi Acara', location),
-            const Divider(height: 24),
-            _buildAgendaDetailRow('Status Agenda', status, isStatus: true),
-            const SizedBox(height: 32),
-            SizedBox(
-              height: 50,
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF10B981),
-                  foregroundColor: Colors.black,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                onPressed: () => Navigator.pop(context),
-                child: const Text(
-                  'Tutup',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAgendaDetailRow(String label, String value, {bool isStatus = false}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: _getTextSubColor(),
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        if (isStatus)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFF10B981).withOpacity(0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Text(
-              'Dikonfirmasi',
-              style: TextStyle(
-                color: Color(0xFF10B981),
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
-            ),
-          )
-        else
-          Text(
-            value,
-            style: TextStyle(
-              color: _getTextColor(),
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-      ],
-    );
-  }
 
   void _showAddAgendaDialog() {
     final nameCtrl = TextEditingController();
@@ -2263,6 +2340,7 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
                       ],
                     ),
                   ),
+
                 ],
               ),
             ),
@@ -3180,7 +3258,17 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
                 ],
               ),
             ),
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => VendorChatRoomPage(
+                    clientName: chat['name'],
+                    clientInitial: chat['initial'],
+                  ),
+                ),
+              );
+            },
           ),
         );
       },

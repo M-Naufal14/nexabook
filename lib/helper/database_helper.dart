@@ -294,6 +294,19 @@ class DatabaseHelper {
     return null;
   }
 
+  Future<Map<String, dynamic>?> loginUserWithoutRole(String email, String password) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'users',
+      where: 'email = ? AND password = ?',
+      whereArgs: [email.trim().toLowerCase(), password],
+    );
+    if (maps.isNotEmpty) {
+      return maps.first;
+    }
+    return null;
+  }
+
   // ==================== CRUD VENDOR ====================
 
   Future<List<Map<String, dynamic>>> getVendors({
