@@ -784,7 +784,7 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
             // Circular Profile Photo
             GestureDetector(
               onTap: () {
-                _tabController!.animateTo(2); // Jump to Edit Profil Tab
+                _tabController!.animateTo(3); // Jump to Edit Profil Tab (far right index 3)
               },
               child: CircleAvatar(
                 radius: 16,
@@ -809,8 +809,8 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
             tabs: const [
               Tab(icon: Icon(Icons.dashboard_outlined, size: 20), text: 'Dashboard'),
               Tab(icon: Icon(Icons.receipt_long, size: 20), text: 'Pesanan'),
-              Tab(icon: Icon(Icons.edit_note, size: 20), text: 'Edit Profil'),
               Tab(icon: Icon(Icons.chat_bubble_outline, size: 20), text: 'Obrolan'),
+              Tab(icon: Icon(Icons.edit_note, size: 20), text: 'Edit Profil'),
             ],
           ),
         ),
@@ -819,8 +819,8 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
           children: [
             _buildDashboardTab(),
             _buildBookingsTab(),
-            _buildEditProfileTab(),
             _buildChatsTab(),
+            _buildEditProfileTab(),
           ],
         ),
       ),
@@ -1262,17 +1262,17 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
         _buildActionCard(
           Icons.add_circle_outline,
           'New Service',
-          () => _tabController!.animateTo(2), // jump to Edit Profil Tab where they publish packages
+          () => _tabController!.animateTo(3), // jump to Edit Profil Tab (index 3)
         ),
         _buildActionCard(
           Icons.chat_bubble_outline,
           'Inbox',
-          () => _tabController!.animateTo(3), // Chats
+          () => _tabController!.animateTo(2), // Chats (index 2)
         ),
         _buildActionCard(
           Icons.settings_outlined,
           'Settings',
-          () => _tabController!.animateTo(2), // Settings
+          () => _tabController!.animateTo(3), // Settings (index 3)
         ),
         _buildActionCard(
           Icons.account_balance_wallet_outlined,
@@ -2100,7 +2100,7 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
                     setState(() {
                       _activeTabIndex = 0; // Profile Info sub-tab
                     });
-                    _tabController!.animateTo(2); // Jump to Edit Profil tab
+                    _tabController!.animateTo(3); // Jump to Edit Profil tab (index 3)
                   },
                 ),
                 // 3. Pengaturan
@@ -2112,7 +2112,7 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
                     setState(() {
                       _activeTabIndex = 3; // Settings sub-tab
                     });
-                    _tabController!.animateTo(2); // Jump to Edit Profil tab
+                    _tabController!.animateTo(3); // Jump to Edit Profil tab (index 3)
                   },
                 ),
                 const Padding(
@@ -3182,7 +3182,7 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
 
   // D. VENDOR PORTAL - SIMULATION CHATS TAB
   Widget _buildChatsTab() {
-    final List<Map<String, dynamic>> dummyChats = [
+    final List<Map<String, dynamic>> activeChats = [
       {
         'initial': 'N',
         'name': 'Naufal Pelanggan',
@@ -3197,14 +3197,57 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
         'time': 'Kemarin',
         'unread': 0,
       },
+      {
+        'initial': 'A',
+        'name': 'ANDI PRATAMA',
+        'msg': 'Halo kak, untuk wedding session tanggal 24 besok siap ya?',
+        'time': '10:00',
+        'unread': 0,
+      },
+      {
+        'initial': 'S',
+        'name': 'SITI AMINAH',
+        'msg': 'Mohon konfirmasi pesanan saya kak.',
+        'time': '13:00',
+        'unread': 0,
+      },
+      {
+        'initial': 'B',
+        'name': 'BUDI SANTOSA',
+        'msg': 'Peralatan pendukung sudah dipersiapkan?',
+        'time': '15:00',
+        'unread': 0,
+      },
     ];
+
+    // Populate active chats from real database bookings dynamically!
+    for (final dbBk in _bookings) {
+      final clientEmail = dbBk['user_email']?.toString() ?? 'klien@gmail.com';
+      final clientName = clientEmail.split('@')[0].toUpperCase();
+      final clientInitial = clientName.isNotEmpty ? clientName[0] : 'C';
+      final serviceType = dbBk['type']?.toString() ?? 'Layanan Visual';
+      final bookingCode = dbBk['booking_code']?.toString() ?? '#NX-882910';
+
+      // Avoid duplicates
+      if (activeChats.any((chat) => chat['name'].toUpperCase() == clientName.toUpperCase())) {
+        continue;
+      }
+
+      activeChats.add({
+        'initial': clientInitial,
+        'name': clientName,
+        'msg': 'Mulai obrolan baru mengenai pesanan $bookingCode ($serviceType)...',
+        'time': dbBk['date']?.toString() ?? 'Baru saja',
+        'unread': 0,
+      });
+    }
 
     return ListView.builder(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.all(20),
-      itemCount: dummyChats.length,
+      itemCount: activeChats.length,
       itemBuilder: (context, i) {
-        final chat = dummyChats[i];
+        final chat = activeChats[i];
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(

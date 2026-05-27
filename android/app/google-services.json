@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "85432995468",
+    "project_id": "nexabook-aed13",
+    "storage_bucket": "nexabook-aed13.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:85432995468:android:455b369f63e5810aee35a9",
+        "android_client_info": {
+          "package_name": "com.example.nexabook"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC7IJdJ1o7LohmOseGEMkXyGzP_vhyTpls"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

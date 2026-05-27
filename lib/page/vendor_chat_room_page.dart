@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../main.dart';
 
 class VendorChatRoomPage extends StatefulWidget {
   final String clientName;
@@ -129,18 +128,18 @@ class _VendorChatRoomPageState extends State<VendorChatRoomPage> {
                     ),
                   ),
                   const SizedBox(height: 2),
-                  const Row(
+                  Row(
                     children: [
                       Container(
                         width: 8,
                         height: 8,
-                        decoration: BoxDecoration(
+                        decoration: const BoxDecoration(
                           color: Color(0xFF10B981),
                           shape: BoxShape.circle,
                         ),
                       ),
-                      SizedBox(width: 4),
-                      Text(
+                      const SizedBox(width: 4),
+                      const Text(
                         'Online',
                         style: TextStyle(
                           fontSize: 11,

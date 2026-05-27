@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import '../helper/database_helper.dart';
+import 'vendor_chat_room_page.dart';
 
 
 class VendorOrderDetailPage extends StatefulWidget {
@@ -15,19 +16,18 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
   late Map<String, dynamic> _bookingData;
   bool _isUpdating = false;
 
-  // Constants Exclusive Palette (Vivid Modernity)
-  static const Color kBackground = Color(0xFF051424);
-  static const Color kSurfaceCard = Color(0xFF122131);
-  static const Color kPrimaryGreen = Color(0xFF3FE56C);
-  static const Color kOnPrimary = Color(0xFF003912);
-  static const Color kOnSurface = Color(0xFFD4E4FA);
-  static const Color kOnSurfaceVariant = Color(0xFFBBCBB8);
-  static const Color kBorderColor = Color(0x1FFFFFFF);
+  // Fallback dark palette constants
+  static const Color kDarkBackground = Color(0xFF051424);
+  static const Color kDarkSurfaceCard = Color(0xFF122131);
+  static const Color kDarkPrimaryGreen = Color(0xFF3FE56C);
+  static const Color kDarkOnPrimary = Color(0xFF003912);
+  static const Color kDarkOnSurface = Color(0xFFD4E4FA);
+  static const Color kDarkOnSurfaceVariant = Color(0xFFBBCBB8);
+  static const Color kDarkBorderColor = Color(0x1FFFFFFF);
 
   @override
   void initState() {
     super.initState();
-    // Clone or reference the booking map so we can mutate status or date locally
     _bookingData = Map<String, dynamic>.from(widget.booking);
   }
 
@@ -54,6 +54,9 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
 
   // Update status in database
   Future<void> _changeBookingStatus(String newStatus) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryGreen = isDark ? kDarkPrimaryGreen : const Color(0xFF118954);
+
     final bookingId = _bookingData['id'] as int?;
     if (bookingId == null || bookingId == 9991 || bookingId == 9992 || bookingId == 9993 || bookingId == 8881 || bookingId == 8882 || bookingId == 8883) {
       // Mock booking update
@@ -63,7 +66,7 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Status pesanan simulasi diubah menjadi $newStatus.'),
-          backgroundColor: kPrimaryGreen,
+          backgroundColor: primaryGreen,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -72,6 +75,7 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
 
     setState(() => _isUpdating = true);
     final success = await DatabaseHelper.instance.updateBookingStatus(bookingId, newStatus);
+    if (!mounted) return;
     setState(() => _isUpdating = false);
 
     if (success) {
@@ -81,7 +85,7 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Status pesanan berhasil diperbarui ke "$newStatus".'),
-          backgroundColor: kPrimaryGreen,
+          backgroundColor: primaryGreen,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -100,9 +104,16 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
   void _showEditOptionsDialog() {
     final currentStatus = _bookingData['status']?.toString() ?? 'Aktif';
     
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? kDarkSurfaceCard : Colors.white;
+    final primaryGreen = isDark ? kDarkPrimaryGreen : const Color(0xFF118954);
+    final textOnSurface = isDark ? kDarkOnSurface : const Color(0xFF0F172A);
+    final textOnSurfaceVariant = isDark ? kDarkOnSurfaceVariant : const Color(0xFF64748B);
+    final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: kSurfaceCard,
+      backgroundColor: cardColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -113,10 +124,10 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Kelola Status Pesanan',
                 style: TextStyle(
-                  color: kPrimaryGreen,
+                  color: primaryGreen,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -124,25 +135,25 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
               const SizedBox(height: 8),
               Text(
                 'Perbarui status pengerjaan jasa visual untuk klien.',
-                style: TextStyle(color: kOnSurfaceVariant, fontSize: 13),
+                style: TextStyle(color: textOnSurfaceVariant, fontSize: 13),
               ),
               const SizedBox(height: 20),
               _buildStatusOptionItem('Aktif', currentStatus == 'Aktif' || currentStatus == 'Dikonfirmasi', () {
                 Navigator.pop(context);
                 _changeBookingStatus('Aktif');
-              }),
+              }, primaryGreen, textOnSurface, textOnSurfaceVariant, titleColor, isDark),
               _buildStatusOptionItem('Menunggu', currentStatus == 'Menunggu', () {
                 Navigator.pop(context);
                 _changeBookingStatus('Menunggu');
-              }),
+              }, primaryGreen, textOnSurface, textOnSurfaceVariant, titleColor, isDark),
               _buildStatusOptionItem('Selesai', currentStatus == 'Selesai', () {
                 Navigator.pop(context);
                 _changeBookingStatus('Selesai');
-              }),
+              }, primaryGreen, textOnSurface, textOnSurfaceVariant, titleColor, isDark),
               _buildStatusOptionItem('Dibatalkan', currentStatus == 'Dibatalkan', () {
                 Navigator.pop(context);
                 _changeBookingStatus('Dibatalkan');
-              }),
+              }, primaryGreen, textOnSurface, textOnSurfaceVariant, titleColor, isDark),
               const SizedBox(height: 12),
             ],
           ),
@@ -151,17 +162,26 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
     );
   }
 
-  Widget _buildStatusOptionItem(String status, bool isActive, VoidCallback onTap) {
+  Widget _buildStatusOptionItem(
+    String status,
+    bool isActive,
+    VoidCallback onTap,
+    Color primaryGreen,
+    Color textOnSurface,
+    Color textOnSurfaceVariant,
+    Color titleColor,
+    bool isDark,
+  ) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(
         isActive ? Icons.check_circle : Icons.radio_button_off,
-        color: isActive ? kPrimaryGreen : kOnSurfaceVariant,
+        color: isActive ? primaryGreen : textOnSurfaceVariant,
       ),
       title: Text(
         status,
         style: TextStyle(
-          color: isActive ? Colors.white : kOnSurface,
+          color: isActive ? titleColor : textOnSurface,
           fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
         ),
       ),
@@ -171,24 +191,37 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Premium Color Resolution
+    final scaffoldBg = isDark ? kDarkBackground : const Color(0xFFF8FAFC);
+    final cardColor = isDark ? kDarkSurfaceCard : Colors.white;
+    final primaryGreen = isDark ? kDarkPrimaryGreen : const Color(0xFF118954);
+    final onPrimary = isDark ? kDarkOnPrimary : Colors.white;
+    final textOnSurface = isDark ? kDarkOnSurface : const Color(0xFF0F172A);
+    final textOnSurfaceVariant = isDark ? kDarkOnSurfaceVariant : const Color(0xFF64748B);
+    final borderColor = isDark ? kDarkBorderColor : const Color(0xFFE2E8F0);
+    final mapBgColor = isDark ? const Color(0xFF0F1E2E) : const Color(0xFFF1F5F9);
+    final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+
     // 1. Parse Status and Badge visual elements
     final rawStatus = _bookingData['status']?.toString() ?? 'Aktif';
     String displayStatusText = 'Active Order';
-    Color badgeBgColor = kPrimaryGreen.withOpacity(0.1);
-    Color badgeTextColor = kPrimaryGreen;
+    Color badgeBgColor = primaryGreen.withOpacity(0.12);
+    Color badgeTextColor = primaryGreen;
 
     if (rawStatus == 'Menunggu') {
       displayStatusText = 'Pending Order';
-      badgeBgColor = Colors.white.withOpacity(0.08);
-      badgeTextColor = kOnSurfaceVariant;
+      badgeBgColor = isDark ? Colors.white.withOpacity(0.08) : Colors.grey.shade200;
+      badgeTextColor = textOnSurfaceVariant;
     } else if (rawStatus == 'Selesai') {
       displayStatusText = 'Completed Order';
-      badgeBgColor = Colors.blue.withOpacity(0.12);
-      badgeTextColor = Colors.blue.shade300;
+      badgeBgColor = isDark ? Colors.blue.withOpacity(0.12) : Colors.blue.shade50;
+      badgeTextColor = isDark ? Colors.blue.shade300 : Colors.blue.shade700;
     } else if (rawStatus == 'Dibatalkan') {
       displayStatusText = 'Cancelled Order';
-      badgeBgColor = Colors.redAccent.withOpacity(0.12);
-      badgeTextColor = Colors.redAccent;
+      badgeBgColor = isDark ? Colors.redAccent.withOpacity(0.12) : Colors.red.shade50;
+      badgeTextColor = isDark ? Colors.redAccent : Colors.red.shade600;
     }
 
     // 2. Extract service specifics
@@ -212,33 +245,33 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
     final clientName = clientEmail.split('@')[0].toUpperCase();
 
     return Scaffold(
-      backgroundColor: kBackground,
+      backgroundColor: scaffoldBg,
       appBar: AppBar(
-        backgroundColor: kBackground,
+        backgroundColor: scaffoldBg,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: kOnSurfaceVariant),
+          icon: Icon(Icons.arrow_back, color: textOnSurfaceVariant),
           onPressed: () {
             Navigator.pop(context, true); // Trigger reload on previous screen!
           },
         ),
-        title: const Text(
+        title: Text(
           'Order Details',
           style: TextStyle(
-            color: kPrimaryGreen,
+            color: primaryGreen,
             fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.more_vert, color: kOnSurfaceVariant),
+            icon: Icon(Icons.more_vert, color: textOnSurfaceVariant),
             onPressed: _showEditOptionsDialog,
           ),
         ],
       ),
       body: _isUpdating
-          ? const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(kPrimaryGreen)))
+          ? Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(primaryGreen)))
           : SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -246,14 +279,14 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Status Tag & Kode Order
-                  _buildStatusHeader(displayStatusText, badgeBgColor, badgeTextColor, bookingCode),
+                  _buildStatusHeader(displayStatusText, badgeBgColor, badgeTextColor, bookingCode, textOnSurfaceVariant),
                   const SizedBox(height: 8),
 
                   // Judul Layanan
                   Text(
                     serviceType,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: titleColor,
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
                       height: 1.25,
@@ -264,61 +297,63 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
                   // Tanggal Jadwal
                   Text(
                     "Scheduled for $scheduledDate",
-                    style: const TextStyle(
-                      color: kOnSurfaceVariant,
+                    style: TextStyle(
+                      color: textOnSurfaceVariant,
                       fontSize: 15,
                     ),
                   ),
                   const SizedBox(height: 24),
 
                   // Tombol Edit & Chat Client
-                  _buildActionButtons(clientName),
+                  _buildActionButtons(clientName, primaryGreen, onPrimary, cardColor, borderColor, titleColor),
                   const SizedBox(height: 24),
 
                   // Kartu Peta Taktis & Lokasi Detil
-                  _buildMapLocationCard(serviceLocation),
+                  _buildMapLocationCard(serviceLocation, cardColor, borderColor, mapBgColor, scaffoldBg, primaryGreen, onPrimary, textOnSurfaceVariant, titleColor),
                   const SizedBox(height: 16),
 
                   // Profil Klien
-                  _buildClientCard(clientName, clientEmail),
+                  _buildClientCard(clientName, clientEmail, cardColor, borderColor, primaryGreen, textOnSurface, textOnSurfaceVariant, titleColor),
                   const SizedBox(height: 16),
 
                   // Spesifikasi Layanan
-                  _buildServiceSpecificsCard(serviceType),
+                  _buildServiceSpecificsCard(serviceType, cardColor, borderColor, textOnSurfaceVariant, primaryGreen, textOnSurface, titleColor),
                   const SizedBox(height: 16),
 
                   // Ringkasan Transaksi Finansial
-                  _buildFinancialsCard(baseRate, locationFee, surcharge, totalRevenue, currencySymbol),
+                  _buildFinancialsCard(baseRate, locationFee, surcharge, totalRevenue, currencySymbol, cardColor, borderColor, textOnSurfaceVariant, textOnSurface, primaryGreen, titleColor),
                   const SizedBox(height: 16),
 
                   // Catatan Klien (Notes)
-                  _buildClientNotesCard(serviceType),
+                  _buildClientNotesCard(serviceType, cardColor, borderColor, textOnSurfaceVariant, textOnSurface),
                   const SizedBox(height: 60),
                 ],
               ),
             ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: kPrimaryGreen,
+        backgroundColor: primaryGreen,
         onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("Membuka obrolan instan dengan klien $clientName..."),
-              behavior: SnackBarBehavior.floating,
-              backgroundColor: kPrimaryGreen,
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => VendorChatRoomPage(
+                clientName: clientName,
+                clientInitial: clientName.isNotEmpty ? clientName[0] : 'C',
+              ),
             ),
           );
         },
         shape: const CircleBorder(),
-        child: const Icon(
+        child: Icon(
           Icons.chat_bubble,
-          color: kOnPrimary,
+          color: onPrimary,
         ),
       ),
     );
   }
 
   // Header Status Tag
-  Widget _buildStatusHeader(String statusText, Color bg, Color text, String code) {
+  Widget _buildStatusHeader(String statusText, Color bg, Color text, String code, Color textOnSurfaceVariant) {
     return Row(
       children: [
         Container(
@@ -340,8 +375,8 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
         const SizedBox(width: 8),
         Text(
           code,
-          style: const TextStyle(
-            color: kOnSurfaceVariant,
+          style: TextStyle(
+            color: textOnSurfaceVariant,
             fontSize: 12,
           ),
         ),
@@ -350,20 +385,20 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
   }
 
   // Tombol Aksi Utama
-  Widget _buildActionButtons(String clientName) {
+  Widget _buildActionButtons(String clientName, Color primaryGreen, Color onPrimary, Color cardColor, Color borderColor, Color titleColor) {
     return Row(
       children: [
         Expanded(
           child: OutlinedButton.icon(
             onPressed: _showEditOptionsDialog,
-            icon: const Icon(Icons.edit_outlined, color: Colors.white, size: 20),
-            label: const Text(
+            icon: Icon(Icons.edit_outlined, color: titleColor, size: 20),
+            label: Text(
               'Edit Status',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              style: TextStyle(color: titleColor, fontWeight: FontWeight.w600),
             ),
             style: OutlinedButton.styleFrom(
-              backgroundColor: kSurfaceCard,
-              side: const BorderSide(color: kBorderColor),
+              backgroundColor: cardColor,
+              side: BorderSide(color: borderColor),
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -375,21 +410,23 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
         Expanded(
           child: ElevatedButton.icon(
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text("Membuka obrolan dengan $clientName..."),
-                  behavior: SnackBarBehavior.floating,
-                  backgroundColor: kPrimaryGreen,
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => VendorChatRoomPage(
+                    clientName: clientName,
+                    clientInitial: clientName.isNotEmpty ? clientName[0] : 'C',
+                  ),
                 ),
               );
             },
-            icon: const Icon(Icons.chat_bubble_outline, color: kOnPrimary, size: 20),
-            label: const Text(
+            icon: Icon(Icons.chat_bubble_outline, color: onPrimary, size: 20),
+            label: Text(
               'Chat Client',
-              style: TextStyle(color: kOnPrimary, fontWeight: FontWeight.bold),
+              style: TextStyle(color: onPrimary, fontWeight: FontWeight.bold),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: kPrimaryGreen,
+              backgroundColor: primaryGreen,
               elevation: 4,
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
@@ -403,12 +440,22 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
   }
 
   // Widget Tampilan Peta Digital
-  Widget _buildMapLocationCard(String location) {
+  Widget _buildMapLocationCard(
+    String location,
+    Color cardColor,
+    Color borderColor,
+    Color mapBgColor,
+    Color scaffoldBg,
+    Color primaryGreen,
+    Color onPrimary,
+    Color textOnSurfaceVariant,
+    Color titleColor,
+  ) {
     return Container(
       decoration: BoxDecoration(
-        color: kSurfaceCard,
+        color: cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: kBorderColor),
+        border: Border.all(color: borderColor),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -417,12 +464,12 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
           // Visual Peta dengan Canvas Custom Drawing
           Container(
             height: 180,
-            color: const Color(0xFF0F1E2E),
+            color: mapBgColor,
             child: Stack(
               children: [
                 CustomPaint(
                   size: Size.infinite,
-                  painter: _MapGridPainter(),
+                  painter: _MapGridPainter(primaryGreen: primaryGreen),
                 ),
                 Container(
                   decoration: BoxDecoration(
@@ -431,7 +478,7 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
                       end: Alignment.bottomCenter,
                       colors: [
                         Colors.transparent,
-                        kBackground.withOpacity(0.5),
+                        scaffoldBg.withOpacity(0.5),
                       ],
                     ),
                   ),
@@ -441,20 +488,20 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
                   left: 16,
                   child: Container(
                     padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(
-                      color: kPrimaryGreen,
+                    decoration: BoxDecoration(
+                      color: primaryGreen,
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: kPrimaryGreen,
+                          color: primaryGreen.withOpacity(0.4),
                           blurRadius: 10,
-                          offset: Offset(0, 2),
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.location_on,
-                      color: kOnPrimary,
+                      color: onPrimary,
                       size: 20,
                     ),
                   ),
@@ -473,10 +520,10 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'SERVICE LOCATION',
                         style: TextStyle(
-                          color: kOnSurfaceVariant,
+                          color: textOnSurfaceVariant,
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 1.2,
@@ -485,8 +532,8 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
                       const SizedBox(height: 6),
                       Text(
                         location.split(',')[0],
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: titleColor,
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
@@ -494,8 +541,8 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
                       const SizedBox(height: 2),
                       Text(
                         location.contains(',') ? location : "$location, Jawa Timur",
-                        style: const TextStyle(
-                          color: kOnSurfaceVariant,
+                        style: TextStyle(
+                          color: textOnSurfaceVariant,
                           fontSize: 14,
                         ),
                       ),
@@ -509,15 +556,15 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
                       SnackBar(
                         content: Text("Membuka rute ke $location di Google Maps..."),
                         behavior: SnackBarBehavior.floating,
-                        backgroundColor: kPrimaryGreen,
+                        backgroundColor: primaryGreen,
                       ),
                     );
                   },
-                  icon: const Icon(Icons.directions_outlined, color: kPrimaryGreen, size: 18),
-                  label: const Text(
+                  icon: Icon(Icons.directions_outlined, color: primaryGreen, size: 18),
+                  label: Text(
                     'Open\nMaps',
                     style: TextStyle(
-                      color: kPrimaryGreen,
+                      color: primaryGreen,
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                       height: 1.1,
@@ -536,21 +583,30 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
   }
 
   // Profil Detail Klien
-  Widget _buildClientCard(String name, String email) {
+  Widget _buildClientCard(
+    String name,
+    String email,
+    Color cardColor,
+    Color borderColor,
+    Color primaryGreen,
+    Color textOnSurface,
+    Color textOnSurfaceVariant,
+    Color titleColor,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: kSurfaceCard,
+        color: cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: kBorderColor),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
+          Text(
             'CLIENT',
             style: TextStyle(
-              color: kOnSurfaceVariant,
+              color: textOnSurfaceVariant,
               fontSize: 11,
               fontWeight: FontWeight.bold,
               letterSpacing: 1.2,
@@ -564,15 +620,15 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
                 height: 60,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: kPrimaryGreen.withOpacity(0.3), width: 2),
+                  border: Border.all(color: primaryGreen.withOpacity(0.3), width: 2),
                 ),
                 padding: const EdgeInsets.all(3),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(100),
                   child: Image.network(
                     "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=256",
-                    errorBuilder: (context, _, __) {
-                      return const Icon(Icons.person, color: kOnSurfaceVariant, size: 30);
+                    errorBuilder: (context, error, stackTrace) {
+                      return Icon(Icons.person, color: textOnSurfaceVariant, size: 30);
                     },
                     fit: BoxFit.cover,
                   ),
@@ -585,16 +641,16 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
                   children: [
                     Text(
                       name,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: titleColor,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     Text(
                       email,
-                      style: const TextStyle(
-                        color: kOnSurfaceVariant,
+                      style: TextStyle(
+                        color: textOnSurfaceVariant,
                         fontSize: 13,
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -605,24 +661,24 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
             ],
           ),
           const SizedBox(height: 16),
-          const Row(
+          Row(
             children: [
-              Icon(Icons.verified_user_outlined, color: kOnSurfaceVariant, size: 18),
-              SizedBox(width: 8),
+              Icon(Icons.verified_user_outlined, color: textOnSurfaceVariant, size: 18),
+              const SizedBox(width: 8),
               Text(
                 "Verified Enterprise Client",
-                style: TextStyle(color: kOnSurface, fontSize: 13),
+                style: TextStyle(color: textOnSurface, fontSize: 13),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          const Row(
+          Row(
             children: [
-              Icon(Icons.star_rounded, color: kPrimaryGreen, size: 18),
-              SizedBox(width: 8),
+              Icon(Icons.star_rounded, color: primaryGreen, size: 18),
+              const SizedBox(width: 8),
               Text(
                 "4.9 (12 previous orders)",
-                style: TextStyle(color: kOnSurface, fontSize: 13),
+                style: TextStyle(color: textOnSurface, fontSize: 13),
               ),
             ],
           ),
@@ -633,20 +689,20 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
                 SnackBar(
                   content: Text("Profil klien $name terverifikasi keamanan ESCROW."),
                   behavior: SnackBarBehavior.floating,
-                  backgroundColor: kPrimaryGreen,
+                  backgroundColor: primaryGreen,
                 ),
               );
             },
             style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: kBorderColor),
+              side: BorderSide(color: borderColor),
               padding: const EdgeInsets.symmetric(vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text(
+            child: Text(
               'View Full Profile',
-              style: TextStyle(color: kOnSurface, fontWeight: FontWeight.bold),
+              style: TextStyle(color: textOnSurface, fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -655,54 +711,70 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
   }
 
   // Rincian Kategori Spesifik Layanan
-  Widget _buildServiceSpecificsCard(String type) {
+  Widget _buildServiceSpecificsCard(
+    String type,
+    Color cardColor,
+    Color borderColor,
+    Color textOnSurfaceVariant,
+    Color primaryGreen,
+    Color textOnSurface,
+    Color titleColor,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: kSurfaceCard,
+        color: cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: kBorderColor),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
+          Text(
             'SERVICE SPECIFICS',
             style: TextStyle(
-              color: kOnSurfaceVariant,
+              color: textOnSurfaceVariant,
               fontSize: 11,
               fontWeight: FontWeight.bold,
               letterSpacing: 1.2,
             ),
           ),
           const SizedBox(height: 12),
-          _buildSpecificRow(Icons.category_outlined, 'Service Type', type),
-          const Divider(color: kBorderColor, height: 24),
-          _buildSpecificRow(Icons.access_time_outlined, 'Duration', '4 Hours Session'),
-          const Divider(color: kBorderColor, height: 24),
-          _buildSpecificRow(Icons.people_outline_outlined, 'Participants', 'Up to 10 People'),
-          const Divider(color: kBorderColor, height: 24),
-          _buildSpecificRow(Icons.photo_library_outlined, 'Deliverables', '25 Retouched High-Res', isLast: true),
+          _buildSpecificRow(Icons.category_outlined, 'Service Type', type, primaryGreen, textOnSurface, titleColor),
+          Divider(color: borderColor, height: 24),
+          _buildSpecificRow(Icons.access_time_outlined, 'Duration', '4 Hours Session', primaryGreen, textOnSurface, titleColor),
+          Divider(color: borderColor, height: 24),
+          _buildSpecificRow(Icons.people_outline_outlined, 'Participants', 'Up to 10 People', primaryGreen, textOnSurface, titleColor),
+          Divider(color: borderColor, height: 24),
+          _buildSpecificRow(Icons.photo_library_outlined, 'Deliverables', '25 Retouched High-Res', primaryGreen, textOnSurface, titleColor, isLast: true),
         ],
       ),
     );
   }
 
-  Widget _buildSpecificRow(IconData icon, String title, String value, {bool isLast = false}) {
+  Widget _buildSpecificRow(
+    IconData icon,
+    String title,
+    String value,
+    Color primaryGreen,
+    Color textOnSurface,
+    Color titleColor, {
+    bool isLast = false,
+  }) {
     return Row(
       children: [
-        Icon(icon, color: kPrimaryGreen, size: 20),
+        Icon(icon, color: primaryGreen, size: 20),
         const SizedBox(width: 12),
         Text(
           title,
-          style: const TextStyle(color: kOnSurface, fontSize: 15),
+          style: TextStyle(color: textOnSurface, fontSize: 15),
         ),
         const Spacer(),
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: titleColor,
               fontSize: 15,
               fontWeight: FontWeight.bold,
             ),
@@ -716,50 +788,62 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
   }
 
   // Ringkasan Finansial Transaksi
-  Widget _buildFinancialsCard(double base, double locationFee, double surcharge, double total, String symbol) {
+  Widget _buildFinancialsCard(
+    double base,
+    double locationFee,
+    double surcharge,
+    double total,
+    String symbol,
+    Color cardColor,
+    Color borderColor,
+    Color textOnSurfaceVariant,
+    Color textOnSurface,
+    Color primaryGreen,
+    Color titleColor,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: kSurfaceCard,
+        color: cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: kBorderColor),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
+          Text(
             'TRANSACTION SUMMARY',
             style: TextStyle(
-              color: kOnSurfaceVariant,
+              color: textOnSurfaceVariant,
               fontSize: 11,
               fontWeight: FontWeight.bold,
               letterSpacing: 1.2,
             ),
           ),
           const SizedBox(height: 14),
-          _buildFinancialRow('Base Rate', _formatCurrency(base, symbol)),
+          _buildFinancialRow('Base Rate', _formatCurrency(base, symbol), textOnSurface, textOnSurfaceVariant),
           const SizedBox(height: 10),
-          _buildFinancialRow('On-location Fee', _formatCurrency(locationFee, symbol)),
+          _buildFinancialRow('On-location Fee', _formatCurrency(locationFee, symbol), textOnSurface, textOnSurfaceVariant),
           const SizedBox(height: 10),
-          _buildFinancialRow('Platform Surcharge', _formatCurrency(surcharge, symbol)),
+          _buildFinancialRow('Platform Surcharge', _formatCurrency(surcharge, symbol), textOnSurface, textOnSurfaceVariant),
           const SizedBox(height: 16),
-          const Divider(color: kBorderColor, height: 1),
+          Divider(color: borderColor, height: 1),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Total Revenue',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: titleColor,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               Text(
                 _formatCurrency(total, symbol),
-                style: const TextStyle(
-                  color: kPrimaryGreen,
+                style: TextStyle(
+                  color: primaryGreen,
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                 ),
@@ -770,21 +854,21 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: kPrimaryGreen.withOpacity(0.05),
+              color: primaryGreen.withOpacity(0.05),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                Icon(Icons.check_circle_outline, color: kPrimaryGreen, size: 16),
-                SizedBox(width: 8),
+                Icon(Icons.check_circle_outline, color: primaryGreen, size: 16),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Payment secured by NexaEscrow',
-                    style: TextStyle(
-                      color: kPrimaryGreen,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
+                     'Payment secured by NexaEscrow',
+                     style: TextStyle(
+                       color: primaryGreen,
+                       fontSize: 12,
+                       fontWeight: FontWeight.bold,
+                     ),
                   ),
                 ),
               ],
@@ -795,38 +879,44 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
     );
   }
 
-  Widget _buildFinancialRow(String title, String value) {
+  Widget _buildFinancialRow(String title, String value, Color textOnSurface, Color textOnSurfaceVariant) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           title,
-          style: const TextStyle(color: kOnSurfaceVariant, fontSize: 14),
+          style: TextStyle(color: textOnSurfaceVariant, fontSize: 14),
         ),
         Text(
           value,
-          style: const TextStyle(color: kOnSurface, fontSize: 14, fontWeight: FontWeight.w500),
+          style: TextStyle(color: textOnSurface, fontSize: 14, fontWeight: FontWeight.w500),
         ),
       ],
     );
   }
 
   // Teks Catatan Klien
-  Widget _buildClientNotesCard(String type) {
+  Widget _buildClientNotesCard(
+    String type,
+    Color cardColor,
+    Color borderColor,
+    Color textOnSurfaceVariant,
+    Color textOnSurface,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: kSurfaceCard,
+        color: cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: kBorderColor),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
+          Text(
             'CLIENT NOTES',
             style: TextStyle(
-              color: kOnSurfaceVariant,
+              color: textOnSurfaceVariant,
               fontSize: 11,
               fontWeight: FontWeight.bold,
               letterSpacing: 1.2,
@@ -835,8 +925,8 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
           const SizedBox(height: 10),
           Text(
             '"Kami membutuhkan pengerjaan sesi $type dengan gaya sinematik, estetika modern, kontras tinggi, dan bernuansa gelap agar selaras dengan kebutuhan publikasi portofolio korporat kami. Mohon persiapkan peralatan pencahayaan tambahan untuk area pelaksanaan."',
-            style: const TextStyle(
-              color: kOnSurface,
+            style: TextStyle(
+              color: textOnSurface,
               fontSize: 15,
               height: 1.5,
               fontStyle: FontStyle.italic,
@@ -850,14 +940,17 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
 
 // Custom Painter untuk merender visual peta grid neon melingkar secara taktis
 class _MapGridPainter extends CustomPainter {
+  final Color primaryGreen;
+  _MapGridPainter({required this.primaryGreen});
+
   @override
   void paint(Canvas canvas, Size size) {
     final Paint linePaint = Paint()
-      ..color = const Color(0xFF3FE56C).withOpacity(0.12)
+      ..color = primaryGreen.withOpacity(0.12)
       ..strokeWidth = 1.0;
 
     final Paint mainRoutePaint = Paint()
-      ..color = const Color(0xFF3FE56C).withOpacity(0.35)
+      ..color = primaryGreen.withOpacity(0.35)
       ..strokeWidth = 2.0
       ..strokeCap = StrokeCap.round;
 
