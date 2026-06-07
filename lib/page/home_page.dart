@@ -23,32 +23,7 @@ class _HomePageState extends State<HomePage> {
   String? _userProfileImage;
   List<Map<String, dynamic>> _recommendations = [];
 
-  final List<Map<String, dynamic>> _mockChats = [
-    {
-      'initials': 'NV',
-      'name': 'Nexa Visual',
-      'msg': 'Halo kak, untuk tanggal 24 Mei jadwal kami masih kosong...',
-      'time': '10:30',
-      'unread': 2,
-      'color': Colors.blue,
-    },
-    {
-      'initials': 'KK',
-      'name': 'Kisah Kita',
-      'msg': 'Baik kak, data pesanan Anda sudah masuk sistem...',
-      'time': 'Kemarin',
-      'unread': 0,
-      'color': Colors.orange,
-    },
-    {
-      'initials': 'AK',
-      'name': 'Arsip Kita',
-      'msg': 'Sama-sama kak, nanti hasil videonya kami upload ke drive...',
-      'time': '19 Mei',
-      'unread': 0,
-      'color': Colors.purple,
-    }
-  ];
+  List<Map<String, dynamic>> _chatBookings = [];
 
   Color _getScaffoldBg() => Theme.of(context).scaffoldBackgroundColor;
   Color _getCardBg() => Theme.of(context).cardColor;
@@ -75,12 +50,36 @@ class _HomePageState extends State<HomePage> {
       final fCount = await FirebaseSqliteHelper.instance.getFavoriteCount(email);
       final uImg = await FirebaseSqliteHelper.instance.getUserImage(email);
       final recs = await FirebaseSqliteHelper.instance.getVendors(sortBy: 'Rating Tertinggi');
+      final bookings = await FirebaseSqliteHelper.instance.getBookings(email);
+      // Build unique chat entries from bookings that have vendor_owner_email
+      final seen = <String>{};
+      final chatEntries = <Map<String, dynamic>>[];
+      for (final bk in bookings) {
+        final ownerEmail = bk['vendor_owner_email']?.toString() ?? '';
+        if (ownerEmail.isEmpty || seen.contains(ownerEmail)) continue;
+        seen.add(ownerEmail);
+        final vendorName = bk['name']?.toString() ?? 'Vendor';
+        final initials = vendorName.length >= 2
+            ? vendorName.substring(0, 2).toUpperCase()
+            : vendorName.isNotEmpty ? vendorName[0].toUpperCase() : 'V';
+        chatEntries.add({
+          'initials': initials,
+          'name': vendorName,
+          'vendorOwnerEmail': ownerEmail,
+          'myEmail': email,
+          'msg': 'Pesanan ${bk["booking_code"] ?? ""} (${bk["type"] ?? ""})',
+          'time': bk['date']?.toString() ?? '',
+          'unread': 0,
+          'color': Colors.teal,
+        });
+      }
       if (mounted) {
         setState(() {
           _bookingCount = bCount;
           _favoriteCount = fCount;
           _userProfileImage = uImg;
           _recommendations = recs.take(5).toList();
+          _chatBookings = chatEntries;
         });
       }
     } else {
@@ -90,6 +89,7 @@ class _HomePageState extends State<HomePage> {
           _favoriteCount = 0;
           _userProfileImage = null;
           _recommendations = [];
+          _chatBookings = [];
         });
       }
     }
@@ -1119,9 +1119,8 @@ class _HomePageState extends State<HomePage> {
 
 
 
-  // 2. MOCKUP TAB PESAN / CHAT (Premium UI)
+  // 2. TAB PESAN / CHAT (Real-Time via Firestore)
   Widget _buildChatTab() {
-
     return Scaffold(
       backgroundColor: _getScaffoldBg(),
       appBar: AppBar(
@@ -1133,84 +1132,108 @@ class _HomePageState extends State<HomePage> {
           style: TextStyle(color: Color(0xFF118954), fontWeight: FontWeight.bold, fontSize: 22),
         ),
       ),
-      body: ListView.builder(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.all(20).copyWith(bottom: 100),
-        itemCount: _mockChats.length,
-        itemBuilder: (context, index) {
-          final ch = _mockChats[index];
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-              color: _getCardBg(),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: _getBorderColor()),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.01), blurRadius: 6),
-              ],
-            ),
-            child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              leading: CircleAvatar(
-                radius: 26,
-                backgroundColor: (ch['color'] as Color).withOpacity(0.15),
-                child: Text(
-                  ch['initials'],
-                  style: TextStyle(color: ch['color'] as Color, fontWeight: FontWeight.bold),
-                ),
-              ),
-              title: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: _chatBookings.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    ch['name'],
-                    style: TextStyle(fontWeight: FontWeight.bold, color: _getTextColor(), fontSize: 16),
+                  Icon(
+                    Icons.chat_bubble_outline,
+                    size: 64,
+                    color: _getTextSubColor().withOpacity(0.35),
                   ),
+                  const SizedBox(height: 16),
                   Text(
-                    ch['time'],
-                    style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
+                    'Belum ada percakapan.\nBuat booking terlebih dahulu untuk mulai chat!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: _getTextSubColor(), fontSize: 14),
                   ),
                 ],
               ),
-              subtitle: Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        ch['msg'],
-                        style: TextStyle(color: _getTextSubColor(), fontSize: 13, overflow: TextOverflow.ellipsis),
+            )
+          : ListView.builder(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.all(20).copyWith(bottom: 100),
+              itemCount: _chatBookings.length,
+              itemBuilder: (context, index) {
+                final ch = _chatBookings[index];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: _getCardBg(),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: _getBorderColor()),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(
+                            Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.01),
+                        blurRadius: 6,
                       ),
-                    ),
-                    if (ch['unread'] > 0)
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: const BoxDecoration(color: Color(0xFF118954), shape: BoxShape.circle),
-                        child: Text(
-                          "${ch['unread']}",
-                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                    ],
+                  ),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    leading: CircleAvatar(
+                      radius: 26,
+                      backgroundColor: const Color(0xFF10B981).withOpacity(0.15),
+                      child: Text(
+                        ch['initials'],
+                        style: const TextStyle(
+                          color: Color(0xFF10B981),
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                  ],
-                ),
-              ),
-              onTap: () {
-                // Navigate to existing vendor chat room page
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => VendorChatRoomPage(
-                      clientName: ch['name'],
-                      clientInitial: ch['initials'],
                     ),
+                    title: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          ch['name'],
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: _getTextColor(),
+                            fontSize: 16,
+                          ),
+                        ),
+                        Text(
+                          ch['time'],
+                          style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                    subtitle: Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        ch['msg'],
+                        style: TextStyle(
+                          color: _getTextSubColor(),
+                          fontSize: 13,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    onTap: () {
+                      final myEmail = ch['myEmail']?.toString() ?? '';
+                      final vendorOwnerEmail = ch['vendorOwnerEmail']?.toString() ?? '';
+                      final chatRoomId = vendorOwnerEmail.isNotEmpty
+                          ? FirebaseSqliteHelper.getChatRoomId(myEmail, vendorOwnerEmail)
+                          : 'room_${ch['name']}';
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => VendorChatRoomPage(
+                            chatRoomId: chatRoomId,
+                            currentUserEmail: myEmail,
+                            otherUserName: ch['name'],
+                            otherUserInitial: ch['initials'],
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 );
               },
             ),
-          );
-        },
-      ),
     );
   }
 

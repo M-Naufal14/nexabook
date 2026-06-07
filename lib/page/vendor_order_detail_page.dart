@@ -333,12 +333,24 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
       floatingActionButton: FloatingActionButton(
         backgroundColor: primaryGreen,
         onPressed: () {
+          final clientEmail =
+              _bookingData['user_email']?.toString() ?? '';
+          final vendorOwnerEmail =
+              FirebaseSqliteHelper.currentUserEmail ?? '';
+          final chatRoomId =
+              FirebaseSqliteHelper.getChatRoomId(clientEmail, vendorOwnerEmail);
+          final displayName = clientEmail.isNotEmpty
+              ? clientEmail.split('@')[0].toUpperCase()
+              : clientName;
+          final initial = displayName.isNotEmpty ? displayName[0] : 'C';
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => VendorChatRoomPage(
-                clientName: clientName,
-                clientInitial: clientName.isNotEmpty ? clientName[0] : 'C',
+                chatRoomId: chatRoomId,
+                currentUserEmail: vendorOwnerEmail,
+                otherUserName: displayName,
+                otherUserInitial: initial,
               ),
             ),
           );
@@ -410,12 +422,24 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
         Expanded(
           child: ElevatedButton.icon(
             onPressed: () {
+              final clientEmail =
+                  _bookingData['user_email']?.toString() ?? '';
+              final vendorOwnerEmail =
+                  FirebaseSqliteHelper.currentUserEmail ?? '';
+              final chatRoomId = FirebaseSqliteHelper.getChatRoomId(
+                  clientEmail, vendorOwnerEmail);
+              final displayName = clientEmail.isNotEmpty
+                  ? clientEmail.split('@')[0].toUpperCase()
+                  : clientName;
+              final initial = displayName.isNotEmpty ? displayName[0] : 'C';
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => VendorChatRoomPage(
-                    clientName: clientName,
-                    clientInitial: clientName.isNotEmpty ? clientName[0] : 'C',
+                    chatRoomId: chatRoomId,
+                    currentUserEmail: vendorOwnerEmail,
+                    otherUserName: displayName,
+                    otherUserInitial: initial,
                   ),
                 ),
               );

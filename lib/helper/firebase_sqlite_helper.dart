@@ -675,11 +675,13 @@ class FirebaseSqliteHelper {
       }
 
       final bookingId = now.millisecondsSinceEpoch;
+      final vendorOwnerEmail = (vendorData['owner_email'] as String? ?? '').toLowerCase();
 
       await FirebaseFirestore.instance.collection('bookings').doc(bookingId.toString()).set({
         'id': bookingId,
         'booking_code': randomCode,
         'user_email': email.toLowerCase(),
+        'vendor_owner_email': vendorOwnerEmail,
         'vendor_id': vendorId,
         'type': type,
         'date': dateToSave,
@@ -950,5 +952,41 @@ class FirebaseSqliteHelper {
       }
     }
     return false;
+  }
+
+  // ==================== REAL-TIME CHAT ====================
+
+  /// Generates a consistent chat room ID from two email addresses.
+  /// The ID is always the same regardless of which user initiates.
+  static String getChatRoomId(String emailA, String emailB) {
+    final sorted = [emailA.toLowerCase(), emailB.toLowerCase()]..sort();
+    return '${sorted[0]}_${sorted[1]}';
+  }
+
+  /// Sends a message to a Firestore chat room.
+  Future<void> sendMessage(String chatRoomId, String senderEmail, String text) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('chats')
+          .doc(chatRoomId)
+          .collection('messages')
+          .add({
+        'senderEmail': senderEmail.toLowerCase(),
+        'text': text,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint("Error sendMessage: $e");
+    }
+  }
+
+  /// Returns a real-time stream of messages for a chat room, ordered by timestamp.
+  Stream<QuerySnapshot<Map<String, dynamic>>> getMessagesStream(String chatRoomId) {
+    return FirebaseFirestore.instance
+        .collection('chats')
+        .doc(chatRoomId)
+        .collection('messages')
+        .orderBy('timestamp', descending: false)
+        .snapshots();
   }
 }

@@ -1,13 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../helper/firebase_sqlite_helper.dart';
 
+/// A real-time chat room backed by Cloud Firestore.
+///
+/// [chatRoomId]       - Unique room ID shared between the two participants.
+/// [currentUserEmail] - The logged-in user's email (the sender in this session).
+/// [otherUserName]    - Display name shown in the AppBar.
+/// [otherUserInitial] - Single/double letter shown in the avatar.
 class VendorChatRoomPage extends StatefulWidget {
-  final String clientName;
-  final String clientInitial;
+  final String chatRoomId;
+  final String currentUserEmail;
+  final String otherUserName;
+  final String otherUserInitial;
 
   const VendorChatRoomPage({
     super.key,
-    required this.clientName,
-    required this.clientInitial,
+    required this.chatRoomId,
+    required this.currentUserEmail,
+    required this.otherUserName,
+    required this.otherUserInitial,
   });
 
   @override
@@ -17,30 +29,7 @@ class VendorChatRoomPage extends StatefulWidget {
 class _VendorChatRoomPageState extends State<VendorChatRoomPage> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final List<Map<String, dynamic>> _messages = [];
-
-  @override
-  void initState() {
-    super.initState();
-    // Seed conversation data
-    _messages.addAll([
-      {
-        'isMe': false,
-        'text': 'Halo kak, untuk wedding session tanggal 24 Mei besok ready kan ya?',
-        'time': '12:45',
-      },
-      {
-        'isMe': true,
-        'text': 'Halo! Iya kak, jadwal kami untuk tanggal 24 Mei masih ready. Kakak berencana booking paket yang mana?',
-        'time': '12:47',
-      },
-      {
-        'isMe': false,
-        'text': 'Rencana mau ambil paket Nexa Visual yang Rp3.500.000 kak. Nanti DP-nya saya transfer ke rekening studio ya.',
-        'time': '12:50',
-      },
-    ]);
-  }
+  bool _isSending = false;
 
   @override
   void dispose() {
@@ -49,24 +38,22 @@ class _VendorChatRoomPageState extends State<VendorChatRoomPage> {
     super.dispose();
   }
 
-  void _sendMessage() {
+  Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty || _isSending) return;
 
-    final now = DateTime.now();
-    final timeStr = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-
-    setState(() {
-      _messages.add({
-        'isMe': true,
-        'text': text,
-        'time': timeStr,
-      });
-    });
-
+    setState(() => _isSending = true);
     _messageController.clear();
 
-    // Scroll to bottom after message is sent
+    await FirebaseSqliteHelper.instance.sendMessage(
+      widget.chatRoomId,
+      widget.currentUserEmail,
+      text,
+    );
+
+    if (mounted) setState(() => _isSending = false);
+
+    // Scroll to bottom after send
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -78,6 +65,7 @@ class _VendorChatRoomPageState extends State<VendorChatRoomPage> {
     });
   }
 
+  // ─── Theme helpers ──────────────────────────────────────────
   Color _getScaffoldBg() => Theme.of(context).scaffoldBackgroundColor;
   Color _getCardBg() => Theme.of(context).cardColor;
   Color _getTextColor() => Theme.of(context).brightness == Brightness.dark
@@ -106,7 +94,7 @@ class _VendorChatRoomPageState extends State<VendorChatRoomPage> {
               radius: 20,
               backgroundColor: const Color(0xFF10B981).withOpacity(0.12),
               child: Text(
-                widget.clientInitial,
+                widget.otherUserInitial,
                 style: const TextStyle(
                   color: Color(0xFF10B981),
                   fontWeight: FontWeight.bold,
@@ -120,7 +108,7 @@ class _VendorChatRoomPageState extends State<VendorChatRoomPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    widget.clientName,
+                    widget.otherUserName,
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -141,10 +129,7 @@ class _VendorChatRoomPageState extends State<VendorChatRoomPage> {
                       const SizedBox(width: 4),
                       const Text(
                         'Online',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey,
-                        ),
+                        style: TextStyle(fontSize: 11, color: Colors.grey),
                       ),
                     ],
                   ),
@@ -169,79 +154,95 @@ class _VendorChatRoomPageState extends State<VendorChatRoomPage> {
       ),
       body: Column(
         children: [
-          // Message List
+          // ─── Real-Time Message List ─────────────────────────
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(20),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final msg = _messages[index];
-                final isMe = msg['isMe'] as bool;
+            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: FirebaseSqliteHelper.instance
+                  .getMessagesStream(widget.chatRoomId),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation(Color(0xFF10B981)),
+                    ),
+                  );
+                }
 
-                return Align(
-                  alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    constraints: BoxConstraints(
-                      maxWidth: MediaQuery.of(context).size.width * 0.75,
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'Gagal memuat pesan.\nPeriksa koneksi internet Anda.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: _getTextSubColor()),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: isMe
-                          ? const Color(0xFF10B981)
-                          : (isDark ? const Color(0xFF1E293B) : Colors.grey.shade100),
-                      borderRadius: BorderRadius.only(
-                        topLeft: const Radius.circular(20),
-                        topRight: const Radius.circular(20),
-                        bottomLeft: Radius.circular(isMe ? 20 : 0),
-                        bottomRight: Radius.circular(isMe ? 0 : 20),
-                      ),
-                      boxShadow: isMe
-                          ? [
-                              BoxShadow(
-                                color: const Color(0xFF10B981).withOpacity(0.2),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
-                              )
-                            ]
-                          : [],
-                    ),
+                  );
+                }
+
+                final docs = snapshot.data?.docs ?? [];
+
+                if (docs.isEmpty) {
+                  return Center(
                     child: Column(
-                      crossAxisAlignment:
-                          isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          msg['text'],
-                          style: TextStyle(
-                            color: isMe
-                                ? Colors.black
-                                : _getTextColor(),
-                            fontSize: 14.5,
-                            fontWeight: isMe ? FontWeight.w600 : FontWeight.w500,
-                            height: 1.3,
-                          ),
+                        Icon(
+                          Icons.chat_bubble_outline,
+                          size: 56,
+                          color: _getTextSubColor().withOpacity(0.4),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 12),
                         Text(
-                          msg['time'],
+                          'Belum ada pesan.\nMulai percakapan sekarang!',
+                          textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: isMe
-                                ? Colors.black.withOpacity(0.5)
-                                : Colors.grey.shade500,
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.bold,
+                            color: _getTextSubColor(),
+                            fontSize: 14,
                           ),
                         ),
                       ],
                     ),
-                  ),
+                  );
+                }
+
+                // Auto-scroll to the latest message
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (_scrollController.hasClients) {
+                    _scrollController.animateTo(
+                      _scrollController.position.maxScrollExtent,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOut,
+                    );
+                  }
+                });
+
+                return ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.all(20),
+                  itemCount: docs.length,
+                  itemBuilder: (context, index) {
+                    final data = docs[index].data();
+                    final isMe = (data['senderEmail'] as String? ?? '')
+                            .toLowerCase() ==
+                        widget.currentUserEmail.toLowerCase();
+                    final text = data['text'] as String? ?? '';
+                    final Timestamp? ts = data['timestamp'] as Timestamp?;
+                    final timeStr = ts != null
+                        ? _formatTimestamp(ts.toDate())
+                        : '...';
+
+                    return _buildMessageBubble(
+                      isMe: isMe,
+                      text: text,
+                      time: timeStr,
+                      isDark: isDark,
+                    );
+                  },
                 );
               },
             ),
           ),
 
-          // Message Input Field
+          // ─── Message Input Field ────────────────────────────
           SafeArea(
             child: Container(
               padding: const EdgeInsets.all(12),
@@ -249,20 +250,22 @@ class _VendorChatRoomPageState extends State<VendorChatRoomPage> {
                 color: _getCardBg(),
                 border: Border(
                   top: BorderSide(
-                    color: isDark ? const Color(0xFF334155) : Colors.grey.shade200,
+                    color:
+                        isDark ? const Color(0xFF334155) : Colors.grey.shade200,
                     width: 1.0,
                   ),
                 ),
               ),
               child: Row(
                 children: [
-                  // Attachment Icon
+                  // Attachment Icon (placeholder)
                   IconButton(
                     icon: const Icon(Icons.add, color: Color(0xFF10B981)),
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('Lampiran simulasi didukung di versi penuh.'),
+                          content:
+                              Text('Lampiran akan didukung di versi berikutnya.'),
                           behavior: SnackBarBehavior.floating,
                         ),
                       );
@@ -273,7 +276,8 @@ class _VendorChatRoomPageState extends State<VendorChatRoomPage> {
                   Expanded(
                     child: TextField(
                       controller: _messageController,
-                      style: TextStyle(color: _getTextColor(), fontSize: 14.5),
+                      style:
+                          TextStyle(color: _getTextColor(), fontSize: 14.5),
                       decoration: InputDecoration(
                         hintText: 'Tulis pesan...',
                         hintStyle: TextStyle(
@@ -281,7 +285,9 @@ class _VendorChatRoomPageState extends State<VendorChatRoomPage> {
                           fontSize: 14.5,
                         ),
                         filled: true,
-                        fillColor: isDark ? const Color(0xFF0F172A) : Colors.grey.shade50,
+                        fillColor: isDark
+                            ? const Color(0xFF0F172A)
+                            : Colors.grey.shade50,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 12,
@@ -298,17 +304,30 @@ class _VendorChatRoomPageState extends State<VendorChatRoomPage> {
                   // Send Button
                   GestureDetector(
                     onTap: _sendMessage,
-                    child: Container(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.all(12),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF10B981),
+                      decoration: BoxDecoration(
+                        color: _isSending
+                            ? const Color(0xFF10B981).withOpacity(0.5)
+                            : const Color(0xFF10B981),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
-                        Icons.send_rounded,
-                        color: Colors.black,
-                        size: 20,
-                      ),
+                      child: _isSending
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation(Colors.black),
+                              ),
+                            )
+                          : const Icon(
+                              Icons.send_rounded,
+                              color: Colors.black,
+                              size: 20,
+                            ),
                     ),
                   ),
                 ],
@@ -316,6 +335,82 @@ class _VendorChatRoomPageState extends State<VendorChatRoomPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ─── Helpers ─────────────────────────────────────────────────
+
+  String _formatTimestamp(DateTime dt) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final msgDay = DateTime(dt.year, dt.month, dt.day);
+    final hour = dt.hour.toString().padLeft(2, '0');
+    final minute = dt.minute.toString().padLeft(2, '0');
+    if (msgDay == today) return '$hour:$minute';
+    return '${dt.day}/${dt.month} $hour:$minute';
+  }
+
+  Widget _buildMessageBubble({
+    required bool isMe,
+    required String text,
+    required String time,
+    required bool isDark,
+  }) {
+    return Align(
+      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.75,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isMe
+              ? const Color(0xFF10B981)
+              : (isDark ? const Color(0xFF1E293B) : Colors.grey.shade100),
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(20),
+            topRight: const Radius.circular(20),
+            bottomLeft: Radius.circular(isMe ? 20 : 0),
+            bottomRight: Radius.circular(isMe ? 0 : 20),
+          ),
+          boxShadow: isMe
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF10B981).withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  )
+                ]
+              : [],
+        ),
+        child: Column(
+          crossAxisAlignment:
+              isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [
+            Text(
+              text,
+              style: TextStyle(
+                color: isMe ? Colors.black : _getTextColor(),
+                fontSize: 14.5,
+                fontWeight: isMe ? FontWeight.w600 : FontWeight.w500,
+                height: 1.3,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              time,
+              style: TextStyle(
+                color: isMe
+                    ? Colors.black.withOpacity(0.5)
+                    : Colors.grey.shade500,
+                fontSize: 9.5,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

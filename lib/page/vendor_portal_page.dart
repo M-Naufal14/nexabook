@@ -3236,6 +3236,7 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
       activeChats.add({
         'initial': clientInitial,
         'name': clientName,
+        'clientEmail': clientEmail,
         'msg': 'Mulai obrolan baru mengenai pesanan $bookingCode ($serviceType)...',
         'time': dbBk['date']?.toString() ?? 'Baru saja',
         'unread': 0,
@@ -3302,12 +3303,19 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
               ),
             ),
             onTap: () {
+              final myEmail = FirebaseSqliteHelper.currentUserEmail ?? '';
+              final clientEmail = chat['clientEmail']?.toString() ?? '';
+              final chatRoomId = clientEmail.isNotEmpty
+                  ? FirebaseSqliteHelper.getChatRoomId(myEmail, clientEmail)
+                  : 'room_${chat['name']}';
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => VendorChatRoomPage(
-                    clientName: chat['name'],
-                    clientInitial: chat['initial'],
+                    chatRoomId: chatRoomId,
+                    currentUserEmail: myEmail,
+                    otherUserName: chat['name'],
+                    otherUserInitial: chat['initial'],
                   ),
                 ),
               );

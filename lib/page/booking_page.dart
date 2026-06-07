@@ -788,12 +788,20 @@ class _BookingPageState extends State<BookingPage> {
                 final initials = vendorName.length >= 2
                     ? vendorName.substring(0, 2).toUpperCase()
                     : vendorName.substring(0, 1).toUpperCase();
+                final myEmail = FirebaseSqliteHelper.currentUserEmail ?? '';
+                final vendorOwnerEmail =
+                    bk['vendor_owner_email']?.toString() ?? '';
+                final chatRoomId = vendorOwnerEmail.isNotEmpty
+                    ? FirebaseSqliteHelper.getChatRoomId(myEmail, vendorOwnerEmail)
+                    : 'room_${bk['id'] ?? 'unknown'}';
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => VendorChatRoomPage(
-                      clientName: vendorName,
-                      clientInitial: initials,
+                      chatRoomId: chatRoomId,
+                      currentUserEmail: myEmail,
+                      otherUserName: vendorName,
+                      otherUserInitial: initials,
                     ),
                   ),
                 );
