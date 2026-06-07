@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../helper/database_helper.dart';
+import '../helper/firebase_sqlite_helper.dart';
 import '../main.dart';
 import 'home_page.dart';
 import 'daftar_page.dart';
@@ -62,7 +62,7 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
 
-    final user = await DatabaseHelper.instance.loginUserWithoutRole(email, password);
+    final user = await FirebaseSqliteHelper.instance.loginUserWithoutRole(email, password);
 
     // Tutup loading dialog
     if (mounted) Navigator.pop(context);
@@ -70,8 +70,8 @@ class _LoginPageState extends State<LoginPage> {
     if (user != null) {
       final userRole = user['role'] as String?;
       // Set session aktif
-      DatabaseHelper.currentUserEmail = user['email'] as String?;
-      DatabaseHelper.currentUserRole = userRole;
+      FirebaseSqliteHelper.currentUserEmail = user['email'] as String?;
+      FirebaseSqliteHelper.currentUserRole = userRole;
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -333,7 +333,72 @@ class _LoginPageState extends State<LoginPage> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                              title: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF118954).withOpacity(0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.lock_reset_outlined, color: Color(0xFF118954), size: 22),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Text('Lupa Kata Sandi?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                ],
+                              ),
+                              content: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Jika Anda lupa kata sandi, silakan hubungi administrator platform untuk mereset akun Anda.',
+                                    style: TextStyle(fontSize: 13, height: 1.5),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF118954).withOpacity(0.08),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Row(
+                                      children: [
+                                        Icon(Icons.email_outlined, color: Color(0xFF118954), size: 18),
+                                        SizedBox(width: 10),
+                                        Text(
+                                          'admin@nexabook.com',
+                                          style: TextStyle(
+                                            color: Color(0xFF118954),
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              actions: [
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF118954),
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    elevation: 0,
+                                  ),
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('Mengerti', style: TextStyle(fontWeight: FontWeight.bold)),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                         style: TextButton.styleFrom(
                           padding: EdgeInsets.zero,
                           minimumSize: const Size(50, 30),

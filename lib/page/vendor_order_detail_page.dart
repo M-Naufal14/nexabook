@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
-import '../helper/database_helper.dart';
+import '../helper/firebase_sqlite_helper.dart';
 import 'vendor_chat_room_page.dart';
 
 
@@ -74,7 +74,7 @@ class _VendorOrderDetailPageState extends State<VendorOrderDetailPage> {
     }
 
     setState(() => _isUpdating = true);
-    final success = await DatabaseHelper.instance.updateBookingStatus(bookingId, newStatus);
+    final success = await FirebaseSqliteHelper.instance.updateBookingStatus(bookingId, newStatus);
     if (!mounted) return;
     setState(() => _isUpdating = false);
 

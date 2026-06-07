@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import '../helper/database_helper.dart';
+import '../helper/firebase_sqlite_helper.dart';
 import '../helper/image_helper.dart';
-import '../main.dart';
+import 'vendor_chat_room_page.dart';
+
 
 class BookingPage extends StatefulWidget {
   const BookingPage({super.key});
@@ -35,9 +36,9 @@ class _BookingPageState extends State<BookingPage> {
   }
 
   Future<void> _loadData() async {
-    final email = DatabaseHelper.currentUserEmail;
+    final email = FirebaseSqliteHelper.currentUserEmail;
     if (email != null) {
-      final bks = await DatabaseHelper.instance.getBookings(email);
+      final bks = await FirebaseSqliteHelper.instance.getBookings(email);
       if (mounted) {
         setState(() {
           _bookings = bks;
@@ -108,7 +109,7 @@ class _BookingPageState extends State<BookingPage> {
 
     if (confirm == true) {
       setState(() => _isLoading = true);
-      final success = await DatabaseHelper.instance.updateBookingStatus(id, 'Dibatalkan');
+      final success = await FirebaseSqliteHelper.instance.updateBookingStatus(id, 'Dibatalkan');
       if (success) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -556,7 +557,7 @@ class _BookingPageState extends State<BookingPage> {
     final id = bk['id'] as int? ?? 0;
     final code = bk['booking_code']?.toString() ?? 'BK-XXXX';
 
-    // 1. STATUS SELESAI -> Single full-width "Beri Ulasan" button
+    // 1. STATUS SELESAI -> Dialog Beri Ulasan dengan rating bintang
     if (status == 'Selesai') {
       return SizedBox(
         width: double.infinity,
@@ -567,11 +568,93 @@ class _BookingPageState extends State<BookingPage> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
           onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text("Beri ulasan untuk ${bk['name']} sedang disiapkan."),
-                behavior: SnackBarBehavior.floating,
-                backgroundColor: const Color(0xFF10B981),
+            int _selectedRating = 5;
+            final TextEditingController _reviewController = TextEditingController();
+            showDialog(
+              context: context,
+              builder: (context) => StatefulBuilder(
+                builder: (context, setDialogState) => AlertDialog(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  title: Column(
+                    children: [
+                      Text(
+                        'Beri Ulasan',
+                        style: TextStyle(fontWeight: FontWeight.bold, color: _getTextColor()),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        bk['name']?.toString() ?? 'Vendor',
+                        style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.normal),
+                      ),
+                    ],
+                  ),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Seberapa puas Anda dengan layanan ini?', style: TextStyle(fontSize: 13)),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(5, (i) {
+                          return GestureDetector(
+                            onTap: () => setDialogState(() => _selectedRating = i + 1),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              child: Icon(
+                                i < _selectedRating ? Icons.star : Icons.star_border,
+                                color: Colors.amber,
+                                size: 36,
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _reviewController,
+                        maxLines: 3,
+                        decoration: InputDecoration(
+                          hintText: 'Ceritakan pengalaman Anda... (opsional)',
+                          hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                          contentPadding: const EdgeInsets.all(12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: _getBorderColor()),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFF10B981), width: 1.5),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF10B981),
+                        foregroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Ulasan $_selectedRating bintang untuk ${bk['name']} berhasil dikirim!'),
+                            backgroundColor: const Color(0xFF10B981),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
+                      child: const Text('Kirim Ulasan', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
               ),
             );
           },
@@ -690,7 +773,7 @@ class _BookingPageState extends State<BookingPage> {
           ),
         ),
         const SizedBox(width: 12),
-        // Chat Vendor button
+        // Chat Vendor button -> navigasi ke VendorChatRoomPage
         Expanded(
           child: SizedBox(
             height: 46,
@@ -701,11 +784,17 @@ class _BookingPageState extends State<BookingPage> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
               onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text("Membuka obrolan dengan ${bk['name']}..."),
-                    behavior: SnackBarBehavior.floating,
-                    backgroundColor: const Color(0xFF10B981),
+                final vendorName = bk['name']?.toString() ?? 'Vendor';
+                final initials = vendorName.length >= 2
+                    ? vendorName.substring(0, 2).toUpperCase()
+                    : vendorName.substring(0, 1).toUpperCase();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => VendorChatRoomPage(
+                      clientName: vendorName,
+                      clientInitial: initials,
+                    ),
                   ),
                 );
               },

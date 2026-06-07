@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../helper/database_helper.dart';
+import '../helper/firebase_sqlite_helper.dart';
 import '../main.dart';
 import 'login_page.dart';
 
@@ -95,7 +95,7 @@ class _DaftarPageState extends State<DaftarPage> {
       ),
     );
 
-    final success = await DatabaseHelper.instance.registerUser(email, password, role);
+    final success = await FirebaseSqliteHelper.instance.registerUser(email, password, role);
 
     // Tutup loading dialog
     if (mounted) Navigator.pop(context);

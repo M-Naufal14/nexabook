@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
-import '../helper/database_helper.dart';
+import '../helper/firebase_sqlite_helper.dart';
 import '../helper/image_helper.dart';
 import 'booking_flow_page.dart';
 
 class ExplorePage extends StatefulWidget {
-  const ExplorePage({super.key});
+  final String? initialSearchQuery;
+  final bool showBackButton;
+
+  const ExplorePage({super.key, this.initialSearchQuery, this.showBackButton = false});
 
   @override
   State<ExplorePage> createState() => _ExplorePageState();
@@ -12,7 +15,7 @@ class ExplorePage extends StatefulWidget {
 
 class _ExplorePageState extends State<ExplorePage> {
   List<Map<String, dynamic>> _filteredVendors = [];
-  String _searchQuery = '';
+  late String _searchQuery;
   String _selectedType = 'Semua'; // 'Semua', 'Fotografer', 'Videografer'
   String _sortBy = 'Default'; // 'Default', 'Harga Terendah', 'Rating Tertinggi'
   Set<int> _favoriteVendorIds = {};
@@ -32,11 +35,12 @@ class _ExplorePageState extends State<ExplorePage> {
   @override
   void initState() {
     super.initState();
+    _searchQuery = widget.initialSearchQuery ?? '';
     _loadVendors();
   }
 
   Future<void> _loadVendors() async {
-    final list = await DatabaseHelper.instance.getVendors(
+    final list = await FirebaseSqliteHelper.instance.getVendors(
       searchQuery: _searchQuery,
       selectedType: _selectedType,
       sortBy: _sortBy,
@@ -50,12 +54,12 @@ class _ExplorePageState extends State<ExplorePage> {
   }
 
   Future<void> _loadFavorites() async {
-    final email = DatabaseHelper.currentUserEmail;
+    final email = FirebaseSqliteHelper.currentUserEmail;
     final Set<int> favs = {};
     if (email != null) {
       for (final vendor in _filteredVendors) {
         final id = vendor['id'] as int;
-        if (await DatabaseHelper.instance.isFavorite(email, id)) {
+        if (await FirebaseSqliteHelper.instance.isFavorite(email, id)) {
           favs.add(id);
         }
       }
@@ -68,7 +72,7 @@ class _ExplorePageState extends State<ExplorePage> {
   }
 
   Future<void> _toggleFavorite(int vendorId) async {
-    final email = DatabaseHelper.currentUserEmail;
+    final email = FirebaseSqliteHelper.currentUserEmail;
     if (email == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -79,8 +83,8 @@ class _ExplorePageState extends State<ExplorePage> {
       return;
     }
 
-    await DatabaseHelper.instance.toggleFavorite(email, vendorId);
-    final isFavNow = await DatabaseHelper.instance.isFavorite(email, vendorId);
+    await FirebaseSqliteHelper.instance.toggleFavorite(email, vendorId);
+    final isFavNow = await FirebaseSqliteHelper.instance.isFavorite(email, vendorId);
 
     if (mounted) {
       setState(() {
@@ -121,7 +125,8 @@ class _ExplorePageState extends State<ExplorePage> {
       appBar: AppBar(
         backgroundColor: _getScaffoldBg(),
         elevation: 0,
-        automaticallyImplyLeading: false, // Ensures no back arrow shows
+        automaticallyImplyLeading: widget.showBackButton,
+        iconTheme: IconThemeData(color: const Color(0xFF118954)),
         title: const Text(
           "Eksplorasi Vendor",
           style: TextStyle(
@@ -150,6 +155,7 @@ class _ExplorePageState extends State<ExplorePage> {
                 ],
               ),
               child: TextField(
+                controller: TextEditingController(text: _searchQuery),
                 onChanged: (val) {
                   _searchQuery = val;
                   _loadVendors();

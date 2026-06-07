@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../helper/database_helper.dart';
+import '../helper/firebase_sqlite_helper.dart';
 import '../helper/image_helper.dart';
 import '../main.dart';
 
@@ -55,7 +55,7 @@ class _AdminPortalPageState extends State<AdminPortalPage> with SingleTickerProv
       _isLoading = true;
     });
 
-    final db = DatabaseHelper.instance;
+    final db = FirebaseSqliteHelper.instance;
     final allUsers = await db.getAllUsersAdmin();
     final allVendors = await db.getVendors();
     final allBookings = await db.getAllBookingsAdmin();
@@ -130,7 +130,7 @@ class _AdminPortalPageState extends State<AdminPortalPage> with SingleTickerProv
     );
 
     if (confirmed == true) {
-      final success = await DatabaseHelper.instance.deleteVendor(id);
+      final success = await FirebaseSqliteHelper.instance.deleteVendor(id);
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -169,7 +169,7 @@ class _AdminPortalPageState extends State<AdminPortalPage> with SingleTickerProv
     );
 
     if (confirmed == true) {
-      final success = await DatabaseHelper.instance.deleteUser(id);
+      final success = await FirebaseSqliteHelper.instance.deleteUser(id, email);
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -233,7 +233,7 @@ class _AdminPortalPageState extends State<AdminPortalPage> with SingleTickerProv
     );
 
     if (newStatus != null && newStatus != currentStatus) {
-      final success = await DatabaseHelper.instance.updateBookingStatus(id, newStatus);
+      final success = await FirebaseSqliteHelper.instance.updateBookingStatus(id, newStatus);
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -267,8 +267,8 @@ class _AdminPortalPageState extends State<AdminPortalPage> with SingleTickerProv
               elevation: 0,
             ),
             onPressed: () {
-              DatabaseHelper.currentUserEmail = null;
-              DatabaseHelper.currentUserRole = null;
+              FirebaseSqliteHelper.currentUserEmail = null;
+              FirebaseSqliteHelper.currentUserRole = null;
               Navigator.pop(context);
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(builder: (context) => const SplashPage()),
@@ -301,18 +301,22 @@ class _AdminPortalPageState extends State<AdminPortalPage> with SingleTickerProv
               child: const Icon(Icons.admin_panel_settings, color: Color(0xFF10B981), size: 24),
             ),
             const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Nexabook Admin',
-                  style: TextStyle(color: _getTextColor(), fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  'Platform Moderasi Jasa Visual',
-                  style: TextStyle(color: _getTextSubColor(), fontSize: 11, fontWeight: FontWeight.w400),
-                ),
-              ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Nexabook Admin',
+                    style: TextStyle(color: _getTextColor(), fontSize: 18, fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    'Platform Moderasi Jasa Visual',
+                    style: TextStyle(color: _getTextSubColor(), fontSize: 11, fontWeight: FontWeight.w400),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -428,7 +432,7 @@ class _AdminPortalPageState extends State<AdminPortalPage> with SingleTickerProv
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 14,
           crossAxisSpacing: 14,
-          childAspectRatio: 1.4,
+          childAspectRatio: 1.15,
           children: [
             _buildStatCard(
               'Total Omzet',
@@ -549,7 +553,7 @@ class _AdminPortalPageState extends State<AdminPortalPage> with SingleTickerProv
 
   Widget _buildStatCard(String title, String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: _getCardBg(),
         borderRadius: BorderRadius.circular(22),
@@ -724,6 +728,8 @@ class _AdminPortalPageState extends State<AdminPortalPage> with SingleTickerProv
                         child: Text(
                           vd['name'] ?? 'Nama Vendor',
                           style: TextStyle(fontWeight: FontWeight.bold, color: _getTextColor()),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       Container(
@@ -744,17 +750,40 @@ class _AdminPortalPageState extends State<AdminPortalPage> with SingleTickerProv
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Pemilik: ${vd['owner_email'] ?? "- (Placeholder)"}', style: TextStyle(color: _getTextSubColor(), fontSize: 12)),
-                        const SizedBox(height: 2),
-                        Row(
+                        Text(
+                          'Pemilik: ${vd['owner_email'] ?? "- (Placeholder)"}',
+                          style: TextStyle(color: _getTextSubColor(), fontSize: 12),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 4,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
-                            const Icon(Icons.location_on, size: 12, color: Colors.grey),
-                            const SizedBox(width: 4),
-                            Text(vd['location'] ?? 'Lokasi', style: TextStyle(color: _getTextSubColor(), fontSize: 11)),
-                            const SizedBox(width: 12),
-                            const Icon(Icons.star, size: 12, color: Colors.amber),
-                            const SizedBox(width: 4),
-                            Text('${vd['rating']} (${vd['reviews']} ulasan)', style: TextStyle(color: _getTextSubColor(), fontSize: 11)),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.location_on, size: 12, color: Colors.grey),
+                                const SizedBox(width: 4),
+                                Text(
+                                  vd['location'] ?? 'Lokasi',
+                                  style: TextStyle(color: _getTextSubColor(), fontSize: 11),
+                                ),
+                              ],
+                            ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.star, size: 12, color: Colors.amber),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${vd['rating']} (${vd['reviews']} ulasan)',
+                                  style: TextStyle(color: _getTextSubColor(), fontSize: 11),
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                       ],

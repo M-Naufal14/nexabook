@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../helper/database_helper.dart';
+import '../helper/firebase_sqlite_helper.dart';
 import '../helper/image_helper.dart';
 import '../main.dart';
 import 'home_page.dart';
@@ -155,7 +155,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
   }
 
   Future<void> _handlePayment() async {
-    final email = DatabaseHelper.currentUserEmail;
+    final email = FirebaseSqliteHelper.currentUserEmail;
     if (email == null) return;
 
     // Loading overlay
@@ -173,7 +173,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
     final formattedBookingDate = '${_dateController.text} (${_timeController.text})';
     final customPackageType = '${widget.vendor['name']} - $_selectedPackageName Package';
 
-    await DatabaseHelper.instance.createBooking(
+    await FirebaseSqliteHelper.instance.createBooking(
       email,
       widget.vendor['id'] as int,
       customPackageType,

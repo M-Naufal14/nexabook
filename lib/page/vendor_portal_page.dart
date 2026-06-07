@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import '../helper/database_helper.dart';
+import '../helper/firebase_sqlite_helper.dart';
 import '../helper/image_helper.dart';
 import '../main.dart';
 import 'vendor_order_detail_page.dart';
@@ -113,11 +113,11 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
       _isLoading = true;
     });
 
-    final email = DatabaseHelper.currentUserEmail;
+    final email = FirebaseSqliteHelper.currentUserEmail;
     if (email != null) {
-      final profile = await DatabaseHelper.instance.getVendorByOwnerEmail(email);
+      final profile = await FirebaseSqliteHelper.instance.getVendorByOwnerEmail(email);
       if (profile != null) {
-        final bks = await DatabaseHelper.instance.getBookingsForVendor(profile['id'] as int);
+        final bks = await FirebaseSqliteHelper.instance.getBookingsForVendor(profile['id'] as int);
         
         // Calculate stats
         int total = bks.length;
@@ -404,7 +404,7 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
       _isLoading = true;
     });
 
-    final email = DatabaseHelper.currentUserEmail;
+    final email = FirebaseSqliteHelper.currentUserEmail;
     if (email == null) return;
 
     // clean price value for database raw pricing
@@ -424,7 +424,7 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
         .where((f) => f.isNotEmpty)
         .toList();
 
-    final success = await DatabaseHelper.instance.createOrUpdateVendor({
+    final success = await FirebaseSqliteHelper.instance.createOrUpdateVendor({
       'owner_email': email,
       'name': _nameController.text.trim(),
       'type': _selectedType,
@@ -502,7 +502,7 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
     );
 
     if (confirmed == true) {
-      final success = await DatabaseHelper.instance.updateBookingStatus(bookingId, status);
+      final success = await FirebaseSqliteHelper.instance.updateBookingStatus(bookingId, status);
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -536,8 +536,8 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
               elevation: 0,
             ),
             onPressed: () {
-              DatabaseHelper.currentUserEmail = null;
-              DatabaseHelper.currentUserRole = null;
+              FirebaseSqliteHelper.currentUserEmail = null;
+              FirebaseSqliteHelper.currentUserRole = null;
               Navigator.pop(context);
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(builder: (context) => const SplashPage()),
@@ -2064,7 +2064,7 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
                 const SizedBox(height: 4),
                 // Email
                 Text(
-                  DatabaseHelper.currentUserEmail ?? 'vendor@nexabook.com',
+                  FirebaseSqliteHelper.currentUserEmail ?? 'vendor@nexabook.com',
                   style: TextStyle(
                     fontSize: 12,
                     color: textSub,

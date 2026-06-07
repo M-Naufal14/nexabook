@@ -1,10 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart'; // 1. Import Core Firebase
+import 'firebase_options.dart'; // 2. Import opsi konfigurasi otomatis tadi
 import 'page/login_page.dart';
 import 'page/daftar_page.dart';
 import 'page/vendor_portal_page.dart';
 import 'page/admin_portal_page.dart';
+import 'helper/firebase_sqlite_helper.dart';
 
-void main() {
+void main() async {
+  // Pastikan binding Flutter sudah siap sebelum inisialisasi asynchronous
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Jalankan koneksi ke Cloud Firebase Server
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // Jalankan seeding default users ke Firebase Auth & Firestore
+  await FirebaseSqliteHelper.instance.seedFirebaseUsers();
+
   runApp(const MyApp());
 }
 

@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:nexabook/page/explore_page.dart';
 import 'package:nexabook/page/booking_page.dart';
+import 'package:nexabook/page/booking_flow_page.dart';
+import 'package:nexabook/page/vendor_chat_room_page.dart';
 import 'package:nexabook/main.dart';
 import 'package:image_picker/image_picker.dart';
-import '../helper/database_helper.dart';
+import '../helper/firebase_sqlite_helper.dart';
 import '../helper/image_helper.dart';
 
 class HomePage extends StatefulWidget {
@@ -19,6 +21,34 @@ class _HomePageState extends State<HomePage> {
   int _bookingCount = 0;
   int _favoriteCount = 0;
   String? _userProfileImage;
+  List<Map<String, dynamic>> _recommendations = [];
+
+  final List<Map<String, dynamic>> _mockChats = [
+    {
+      'initials': 'NV',
+      'name': 'Nexa Visual',
+      'msg': 'Halo kak, untuk tanggal 24 Mei jadwal kami masih kosong...',
+      'time': '10:30',
+      'unread': 2,
+      'color': Colors.blue,
+    },
+    {
+      'initials': 'KK',
+      'name': 'Kisah Kita',
+      'msg': 'Baik kak, data pesanan Anda sudah masuk sistem...',
+      'time': 'Kemarin',
+      'unread': 0,
+      'color': Colors.orange,
+    },
+    {
+      'initials': 'AK',
+      'name': 'Arsip Kita',
+      'msg': 'Sama-sama kak, nanti hasil videonya kami upload ke drive...',
+      'time': '19 Mei',
+      'unread': 0,
+      'color': Colors.purple,
+    }
+  ];
 
   Color _getScaffoldBg() => Theme.of(context).scaffoldBackgroundColor;
   Color _getCardBg() => Theme.of(context).cardColor;
@@ -39,16 +69,18 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadData() async {
-    final email = DatabaseHelper.currentUserEmail;
+    final email = FirebaseSqliteHelper.currentUserEmail;
     if (email != null) {
-      final bCount = await DatabaseHelper.instance.getBookingCount(email);
-      final fCount = await DatabaseHelper.instance.getFavoriteCount(email);
-      final uImg = await DatabaseHelper.instance.getUserImage(email);
+      final bCount = await FirebaseSqliteHelper.instance.getBookingCount(email);
+      final fCount = await FirebaseSqliteHelper.instance.getFavoriteCount(email);
+      final uImg = await FirebaseSqliteHelper.instance.getUserImage(email);
+      final recs = await FirebaseSqliteHelper.instance.getVendors(sortBy: 'Rating Tertinggi');
       if (mounted) {
         setState(() {
           _bookingCount = bCount;
           _favoriteCount = fCount;
           _userProfileImage = uImg;
+          _recommendations = recs.take(5).toList();
         });
       }
     } else {
@@ -57,6 +89,7 @@ class _HomePageState extends State<HomePage> {
           _bookingCount = 0;
           _favoriteCount = 0;
           _userProfileImage = null;
+          _recommendations = [];
         });
       }
     }
@@ -135,9 +168,9 @@ class _HomePageState extends State<HomePage> {
                               imageQuality: 85,
                             );
                             if (image != null) {
-                              final email = DatabaseHelper.currentUserEmail;
+                              final email = FirebaseSqliteHelper.currentUserEmail;
                               if (email != null) {
-                                await DatabaseHelper.instance.updateUserImage(email, image.path);
+                                await FirebaseSqliteHelper.instance.updateUserImage(email, image.path);
                                 if (context.mounted) {
                                   Navigator.pop(context);
                                   _loadData();
@@ -171,9 +204,9 @@ class _HomePageState extends State<HomePage> {
                               imageQuality: 85,
                             );
                             if (image != null) {
-                              final email = DatabaseHelper.currentUserEmail;
+                              final email = FirebaseSqliteHelper.currentUserEmail;
                               if (email != null) {
-                                await DatabaseHelper.instance.updateUserImage(email, image.path);
+                                await FirebaseSqliteHelper.instance.updateUserImage(email, image.path);
                                 if (context.mounted) {
                                   Navigator.pop(context);
                                   _loadData();
@@ -231,9 +264,9 @@ class _HomePageState extends State<HomePage> {
                       onPressed: () async {
                         final customUrl = customUrlController.text.trim();
                         if (customUrl.isNotEmpty) {
-                          final email = DatabaseHelper.currentUserEmail;
-                          if (email != null) {
-                            await DatabaseHelper.instance.updateUserImage(email, customUrl);
+                           final email = FirebaseSqliteHelper.currentUserEmail;
+                           if (email != null) {
+                             await FirebaseSqliteHelper.instance.updateUserImage(email, customUrl);
                             if (context.mounted) {
                               Navigator.pop(context);
                               _loadData();
@@ -266,9 +299,9 @@ class _HomePageState extends State<HomePage> {
                     final img = presets[index];
                     return GestureDetector(
                       onTap: () async {
-                        final email = DatabaseHelper.currentUserEmail;
+                        final email = FirebaseSqliteHelper.currentUserEmail;
                         if (email != null) {
-                          await DatabaseHelper.instance.updateUserImage(email, img);
+                          await FirebaseSqliteHelper.instance.updateUserImage(email, img);
                           if (context.mounted) {
                             Navigator.pop(context);
                             _loadData();
@@ -292,7 +325,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   String _getUserDisplayName() {
-    final email = DatabaseHelper.currentUserEmail ?? 'naufal@gmail.com';
+    final email = FirebaseSqliteHelper.currentUserEmail ?? 'naufal@gmail.com';
     final parts = email.split('@');
     if (parts.isNotEmpty) {
       final username = parts[0];
@@ -307,8 +340,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildSideDrawer() {
-    final role = DatabaseHelper.currentUserRole ?? 'Pelanggan';
-    final email = DatabaseHelper.currentUserEmail ?? 'naufal@gmail.com';
+    final role = FirebaseSqliteHelper.currentUserRole ?? 'Pelanggan';
+    final email = FirebaseSqliteHelper.currentUserEmail ?? 'naufal@gmail.com';
     
     return Drawer(
       backgroundColor: _getScaffoldBg(),
@@ -555,8 +588,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   // KATEGORY ITEM
-  Widget categoryItem(String title, String imagePath) {
-    return Container(
+  Widget categoryItem(String title, String imagePath, {VoidCallback? onTap}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
       margin: const EdgeInsets.only(right: 16),
       child: Column(
         children: [
@@ -567,15 +603,23 @@ class _HomePageState extends State<HomePage> {
             decoration: BoxDecoration(
               color: _getCardBg(),
               borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: isDark
+                    ? const Color(0xFF118954)
+                    : const Color(0xFF118954).withOpacity(0.4),
+                width: 1.5,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.05),
+                  color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
                   blurRadius: 12,
                 ),
               ],
             ),
             child: Image.asset(
               imagePath,
+              color: isDark ? Colors.white : null,
+              colorBlendMode: BlendMode.srcIn,
             ),
           ),
           const SizedBox(height: 8),
@@ -589,7 +633,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-    );
+    ));
   }
 
   // VENDOR CARD
@@ -598,17 +642,27 @@ class _HomePageState extends State<HomePage> {
     String location,
     String rating,
     String price,
-    String image,
-  ) {
-    return Container(
-      width: 190,
-      margin: const EdgeInsets.only(right: 18),
-      decoration: BoxDecoration(
+    String image, {
+    VoidCallback? onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 190,
+        margin: const EdgeInsets.only(right: 18),
+        decoration: BoxDecoration(
         color: _getCardBg(),
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark
+              ? const Color(0xFF118954)
+              : const Color(0xFF118954).withOpacity(0.4),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.06),
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.06),
             blurRadius: 12,
           ),
         ],
@@ -703,7 +757,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-    );
+    ));
   }
 
   // NAV ITEM
@@ -859,12 +913,17 @@ class _HomePageState extends State<HomePage> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: _getCardBg(),
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: Colors.grey.shade200),
+                    border: Border.all(
+                      color: isDark
+                          ? const Color(0xFF118954)
+                          : const Color(0xFF118954).withOpacity(0.4),
+                      width: 1.5,
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity( 0.04),
+                        color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
                         blurRadius: 10,
                       ),
                     ],
@@ -888,12 +947,12 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 28),
 
               // KATEGORI
-              const Text(
+              Text(
                 "Kategori",
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF2C3E50),
+                  color: _getTextColor(),
                 ),
               ),
 
@@ -906,22 +965,29 @@ class _HomePageState extends State<HomePage> {
                     categoryItem(
                       "Wedding",
                       "assets/images/wedding.png",
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExplorePage(initialSearchQuery: 'Wedding', showBackButton: true))),
                     ),
                     categoryItem(
                       "Engagement",
                       "assets/images/engagement.png",
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExplorePage(initialSearchQuery: 'Engagement', showBackButton: true))),
                     ),
                     categoryItem(
                       "Prewed",
                       "assets/images/prewedding.png",
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExplorePage(initialSearchQuery: 'Prewed', showBackButton: true))),
                     ),
                     categoryItem(
                       "Graduation",
                       "assets/images/graduation.png",
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExplorePage(initialSearchQuery: 'Graduation', showBackButton: true))),
                     ),
                     categoryItem(
                       "Lainnya",
                       "assets/images/lainnya.png",
+                      onTap: () {
+                        setState(() { selectedNav = 1; });
+                      }
                     ),
                   ],
                 ),
@@ -933,12 +999,12 @@ class _HomePageState extends State<HomePage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     "Rekomendasi",
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF2C3E50),
+                      color: _getTextColor(),
                     ),
                   ),
                   TextButton(
@@ -962,31 +1028,30 @@ class _HomePageState extends State<HomePage> {
 
               SizedBox(
                 height: 290,
-                child: ListView(
+                child: ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  children: [
-                    vendorCard(
-                      "Nexa Visual",
-                      "Pamekasan",
-                      "4.9",
-                      "Mulai Rp3.500K",
-                      "assets/images/nexavisual.png",
-                    ),
-                    vendorCard(
-                      "Kisah Kita",
-                      "Sumenep",
-                      "4.8",
-                      "Mulai Rp2.800K",
-                      "assets/images/kisahkita.png",
-                    ),
-                    vendorCard(
-                      "Arsip Kita",
-                      "Madura",
-                      "5.0",
-                      "Mulai Rp2.500K",
-                      "assets/images/arsipkita.png",
-                    ),
-                  ],
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: _recommendations.length,
+                  itemBuilder: (context, index) {
+                    final vendor = _recommendations[index];
+                    return vendorCard(
+                      vendor['name'] ?? '',
+                      vendor['location'] ?? '',
+                      vendor['rating']?.toString() ?? '0',
+                      vendor['price'] ?? '',
+                      vendor['image'] ?? 'assets/images/bg.png',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => BookingFlowPage(vendor: vendor),
+                          ),
+                        ).then((_) {
+                          _loadData(); // refresh bookings when coming back
+                        });
+                      },
+                    );
+                  },
                 ),
               ),
 
@@ -1056,32 +1121,6 @@ class _HomePageState extends State<HomePage> {
 
   // 2. MOCKUP TAB PESAN / CHAT (Premium UI)
   Widget _buildChatTab() {
-    final List<Map<String, dynamic>> chats = [
-      {
-        'initials': 'NV',
-        'name': 'Nexa Visual',
-        'msg': 'Halo kak, untuk tanggal 24 Mei jadwal kami masih kosong...',
-        'time': '10:30',
-        'unread': 2,
-        'color': Colors.blue,
-      },
-      {
-        'initials': 'KK',
-        'name': 'Kisah Kita',
-        'msg': 'Baik kak, data pesanan Anda sudah masuk sistem...',
-        'time': 'Kemarin',
-        'unread': 0,
-        'color': Colors.orange,
-      },
-      {
-        'initials': 'AK',
-        'name': 'Arsip Kita',
-        'msg': 'Sama-sama kak, nanti hasil videonya kami upload ke drive...',
-        'time': '19 Mei',
-        'unread': 0,
-        'color': Colors.purple,
-      }
-    ];
 
     return Scaffold(
       backgroundColor: _getScaffoldBg(),
@@ -1097,9 +1136,9 @@ class _HomePageState extends State<HomePage> {
       body: ListView.builder(
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.all(20).copyWith(bottom: 100),
-        itemCount: chats.length,
+        itemCount: _mockChats.length,
         itemBuilder: (context, index) {
-          final ch = chats[index];
+          final ch = _mockChats[index];
           return Container(
             margin: const EdgeInsets.only(bottom: 12),
             decoration: BoxDecoration(
@@ -1156,7 +1195,18 @@ class _HomePageState extends State<HomePage> {
                   ],
                 ),
               ),
-              onTap: () {},
+              onTap: () {
+                // Navigate to existing vendor chat room page
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => VendorChatRoomPage(
+                      clientName: ch['name'],
+                      clientInitial: ch['initials'],
+                    ),
+                  ),
+                );
+              },
             ),
           );
         },
@@ -1234,7 +1284,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  DatabaseHelper.currentUserEmail ?? 'naufal@gmail.com',
+                  FirebaseSqliteHelper.currentUserEmail ?? 'naufal@gmail.com',
                   style: TextStyle(color: Colors.white.withOpacity( 0.8), fontSize: 14),
                 ),
                 const SizedBox(height: 12),
@@ -1245,7 +1295,7 @@ class _HomePageState extends State<HomePage> {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    "${DatabaseHelper.currentUserRole ?? 'Pelanggan'} Premium",
+                    "${FirebaseSqliteHelper.currentUserRole ?? 'Pelanggan'} Premium",
                     style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -1269,11 +1319,13 @@ class _HomePageState extends State<HomePage> {
                 Container(width: 1, height: 30, color: _getBorderColor()),
                 _buildStatItem(_favoriteCount.toString(), "Favorit"),
                 Container(width: 1, height: 30, color: _getBorderColor()),
-                _buildStatItem("12", "Obrolan"),
+                _buildStatItem(_mockChats.length.toString(), "Obrolan"),
               ],
             ),
           ),
           const SizedBox(height: 24),
+
+
 
           // Menu Options
           Container(
@@ -1326,7 +1378,7 @@ class _HomePageState extends State<HomePage> {
   Widget _buildProfileMenuTile(
     IconData icon,
     String title, {
-    Color textColor = const Color(0xFF2C3E50),
+    Color? textColor,
     Color iconColor = const Color(0xFF118954),
     VoidCallback? onTap,
   }) {
@@ -1347,7 +1399,7 @@ class _HomePageState extends State<HomePage> {
         style: TextStyle(
           fontWeight: FontWeight.bold, 
           fontSize: 14, 
-          color: textColor == const Color(0xFF2C3E50) ? defaultTitleColor : textColor,
+          color: textColor ?? defaultTitleColor,
         ),
       ),
       trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
@@ -1385,8 +1437,8 @@ class _HomePageState extends State<HomePage> {
               ),
               onPressed: () {
                 // Clear session
-                DatabaseHelper.currentUserEmail = null;
-                DatabaseHelper.currentUserRole = null;
+                FirebaseSqliteHelper.currentUserEmail = null;
+                FirebaseSqliteHelper.currentUserRole = null;
 
                 // Route back to Splash/Start screen
                 Navigator.pop(context); // close dialog
