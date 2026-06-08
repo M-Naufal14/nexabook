@@ -8,6 +8,8 @@ import 'package:nexabook/main.dart';
 import 'package:image_picker/image_picker.dart';
 import '../helper/firebase_sqlite_helper.dart';
 import '../helper/image_helper.dart';
+import '../widget/chat_list_tile.dart';
+import '../widget/sorted_chat_list.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -1119,8 +1121,23 @@ class _HomePageState extends State<HomePage> {
 
 
 
-  // 2. TAB PESAN / CHAT (Real-Time via Firestore)
+  // 2. TAB PESAN / CHAT (Real-Time + Auto-Sorted via Firestore)
   Widget _buildChatTab() {
+    // Siapkan data untuk SortedChatList (chatRoomId sudah dihitung di sini)
+    final chatItems = _chatBookings.map((ch) {
+      final myEmail = ch['myEmail']?.toString() ?? '';
+      final vendorOwnerEmail = ch['vendorOwnerEmail']?.toString() ?? '';
+      final chatRoomId = vendorOwnerEmail.isNotEmpty
+          ? FirebaseSqliteHelper.getChatRoomId(myEmail, vendorOwnerEmail)
+          : 'room_${ch['name']}';
+      return {
+        'chatRoomId': chatRoomId,
+        'currentUserEmail': myEmail,
+        'otherUserName': ch['name'] as String? ?? '',
+        'otherUserInitial': ch['initials'] as String? ?? '',
+      };
+    }).toList();
+
     return Scaffold(
       backgroundColor: _getScaffoldBg(),
       appBar: AppBar(
@@ -1132,108 +1149,7 @@ class _HomePageState extends State<HomePage> {
           style: TextStyle(color: Color(0xFF118954), fontWeight: FontWeight.bold, fontSize: 22),
         ),
       ),
-      body: _chatBookings.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.chat_bubble_outline,
-                    size: 64,
-                    color: _getTextSubColor().withOpacity(0.35),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Belum ada percakapan.\nBuat booking terlebih dahulu untuk mulai chat!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: _getTextSubColor(), fontSize: 14),
-                  ),
-                ],
-              ),
-            )
-          : ListView.builder(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.all(20).copyWith(bottom: 100),
-              itemCount: _chatBookings.length,
-              itemBuilder: (context, index) {
-                final ch = _chatBookings[index];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: _getCardBg(),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: _getBorderColor()),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(
-                            Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.01),
-                        blurRadius: 6,
-                      ),
-                    ],
-                  ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    leading: CircleAvatar(
-                      radius: 26,
-                      backgroundColor: const Color(0xFF10B981).withOpacity(0.15),
-                      child: Text(
-                        ch['initials'],
-                        style: const TextStyle(
-                          color: Color(0xFF10B981),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    title: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          ch['name'],
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: _getTextColor(),
-                            fontSize: 16,
-                          ),
-                        ),
-                        Text(
-                          ch['time'],
-                          style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
-                        ),
-                      ],
-                    ),
-                    subtitle: Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Text(
-                        ch['msg'],
-                        style: TextStyle(
-                          color: _getTextSubColor(),
-                          fontSize: 13,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ),
-                    onTap: () {
-                      final myEmail = ch['myEmail']?.toString() ?? '';
-                      final vendorOwnerEmail = ch['vendorOwnerEmail']?.toString() ?? '';
-                      final chatRoomId = vendorOwnerEmail.isNotEmpty
-                          ? FirebaseSqliteHelper.getChatRoomId(myEmail, vendorOwnerEmail)
-                          : 'room_${ch['name']}';
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => VendorChatRoomPage(
-                            chatRoomId: chatRoomId,
-                            currentUserEmail: myEmail,
-                            otherUserName: ch['name'],
-                            otherUserInitial: ch['initials'],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                );
-              },
-            ),
+      body: SortedChatList(chatItems: chatItems),
     );
   }
 
@@ -1342,7 +1258,7 @@ class _HomePageState extends State<HomePage> {
                 Container(width: 1, height: 30, color: _getBorderColor()),
                 _buildStatItem(_favoriteCount.toString(), "Favorit"),
                 Container(width: 1, height: 30, color: _getBorderColor()),
-                _buildStatItem(_mockChats.length.toString(), "Obrolan"),
+                _buildStatItem(_chatBookings.length.toString(), "Obrolan"),
               ],
             ),
           ),

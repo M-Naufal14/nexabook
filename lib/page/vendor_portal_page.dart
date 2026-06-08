@@ -3,9 +3,10 @@ import 'package:image_picker/image_picker.dart';
 import '../helper/firebase_sqlite_helper.dart';
 import '../helper/image_helper.dart';
 import '../main.dart';
+import '../widget/chat_list_tile.dart';
+import '../widget/sorted_chat_list.dart';
 import 'vendor_order_detail_page.dart';
 import 'vendor_chat_room_page.dart';
-
 
 class VendorPortalPage extends StatefulWidget {
   const VendorPortalPage({super.key});
@@ -3243,87 +3244,22 @@ class _VendorPortalPageState extends State<VendorPortalPage> with SingleTickerPr
       });
     }
 
-    return ListView.builder(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.all(20),
-      itemCount: activeChats.length,
-      itemBuilder: (context, i) {
-        final chat = activeChats[i];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(
-            color: _getCardBg(),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: _getBorderColor()),
-          ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            leading: CircleAvatar(
-              radius: 26,
-              backgroundColor: const Color(0xFF10B981).withOpacity(0.12),
-              child: Text(
-                chat['initial'],
-                style: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold),
-              ),
-            ),
-            title: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  chat['name'],
-                  style: TextStyle(fontWeight: FontWeight.bold, color: _getTextColor(), fontSize: 15),
-                ),
-                Text(
-                  chat['time'],
-                  style: TextStyle(color: _getTextSubColor(), fontSize: 11),
-                ),
-              ],
-            ),
-            subtitle: Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      chat['msg'],
-                      style: TextStyle(color: _getTextSubColor(), fontSize: 13, overflow: TextOverflow.ellipsis),
-                    ),
-                  ),
-                  if (chat['unread'] > 0)
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle),
-                      child: Text(
-                        "${chat['unread']}",
-                        style: const TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            onTap: () {
-              final myEmail = FirebaseSqliteHelper.currentUserEmail ?? '';
-              final clientEmail = chat['clientEmail']?.toString() ?? '';
-              final chatRoomId = clientEmail.isNotEmpty
-                  ? FirebaseSqliteHelper.getChatRoomId(myEmail, clientEmail)
-                  : 'room_${chat['name']}';
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => VendorChatRoomPage(
-                    chatRoomId: chatRoomId,
-                    currentUserEmail: myEmail,
-                    otherUserName: chat['name'],
-                    otherUserInitial: chat['initial'],
-                  ),
-                ),
-              );
-            },
-          ),
-        );
-      },
-    );
+    // Siapkan data dengan chatRoomId yang sudah dihitung
+    final myEmail = FirebaseSqliteHelper.currentUserEmail ?? '';
+    final chatItems = activeChats.map((chat) {
+      final clientEmail = chat['clientEmail']?.toString() ?? '';
+      final chatRoomId = clientEmail.isNotEmpty
+          ? FirebaseSqliteHelper.getChatRoomId(myEmail, clientEmail)
+          : 'room_${chat['name']}';
+      return {
+        'chatRoomId': chatRoomId,
+        'currentUserEmail': myEmail,
+        'otherUserName': chat['name'] as String? ?? '',
+        'otherUserInitial': chat['initial'] as String? ?? '',
+      };
+    }).toList();
+
+    return SortedChatList(chatItems: chatItems);
   }
 
   // HELPER STYLES FOR FORMS

@@ -989,4 +989,15 @@ class FirebaseSqliteHelper {
         .orderBy('timestamp', descending: false)
         .snapshots();
   }
+
+  /// Returns a stream of only the latest 1 message — for chat list preview & unread badge.
+  Stream<QuerySnapshot<Map<String, dynamic>>> getLatestMessageStream(String chatRoomId) {
+    return FirebaseFirestore.instance
+        .collection('chats')
+        .doc(chatRoomId)
+        .collection('messages')
+        .orderBy('timestamp', descending: true)
+        .limit(1)
+        .snapshots();
+  }
 }
